@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Migrated logging from `claif.common.get_logger` to direct `loguru` usage for simplified logging
+- Refactored session management internal structure for better code organization
+- Updated approval strategies with keyword-only arguments for better API clarity
+- Improved session export functionality with cleaner implementation
+
+### Fixed
+- Fixed unused argument warnings in approval strategies by prefixing with underscore
+- Addressed linting issues related to boolean positional arguments
+- Resolved import organization issues
+
+## [1.0.1] - 2025-01-01
+
+### Fixed
+- Minor bug fixes and improvements
+
 ## [1.0.0] - 2025-01-01
 
 ### Added

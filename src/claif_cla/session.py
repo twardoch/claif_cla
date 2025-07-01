@@ -1,10 +1,11 @@
 """Session management for Claude conversations."""
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from claif.common import Message, MessageRole
 from loguru import logger
@@ -85,6 +86,47 @@ class Session:
 
 class SessionManager:
     """Manage conversation sessions."""
+
+    TEMPLATES: ClassVar[dict[str, Any]] = {
+        "code_review": {
+            "system": (
+                "You are a code reviewer. Analyze the provided code for bugs, performance issues, and best practices."
+            ),
+            "initial_messages": [
+                Message(
+                    role=MessageRole.SYSTEM,
+                    content="Ready to review code. Please provide the code you'd like me to analyze.",
+                ),
+            ],
+        },
+        "debugging": {
+            "system": "You are a debugging assistant. Help identify and fix issues in the provided code.",
+            "initial_messages": [
+                Message(
+                    role=MessageRole.SYSTEM,
+                    content="Ready to help debug. Please describe the issue and provide relevant code.",
+                ),
+            ],
+        },
+        "architecture": {
+            "system": "You are a software architect. Help design and improve system architectures.",
+            "initial_messages": [
+                Message(
+                    role=MessageRole.SYSTEM,
+                    content="Ready to discuss architecture. What system would you like to design or improve?",
+                ),
+            ],
+        },
+        "testing": {
+            "system": "You are a testing expert. Help write comprehensive tests and improve test coverage.",
+            "initial_messages": [
+                Message(
+                    role=MessageRole.SYSTEM,
+                    content="Ready to help with testing. What code would you like to test?",
+                ),
+            ],
+        },
+    }
 
     def __init__(self, session_dir: str | None = None):
         if session_dir:
@@ -229,83 +271,37 @@ class SessionManager:
 
         logger.info(f"Merged session {source_id} into {target_id} using {strategy}")
 
-    def export_session(self, session_id: str, format: str = "markdown") -> str:
+    def export_session(self, session_id: str, export_format: str = "markdown") -> str:
         """Export session in various formats."""
         session = self.load_session(session_id)
 
-        if format == "json":
-            return json.dumps(session.to_dict(), indent=2)
+        if export_format == "json":
+            return json.dumps([self._message_to_dict(m) for m in session.messages], indent=2)
 
-        if format == "markdown":
-            lines = [
-                f"# Session: {session.id}",
-                f"Created: {session.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
-                "",
-            ]
+        # Default to markdown
+        lines = []
+        for msg in session.messages:
+            lines.append(f"**{msg.role.value}**:")
+            lines.append(self._message_to_str(msg))
+            lines.append("")
+        return "\n".join(lines)
 
-            for msg in session.messages:
-                role = msg.role.value.capitalize()
-                lines.append(f"## {role}")
+    def _message_to_dict(self, message: Message) -> dict:
+        return {
+            "role": message.role.value,
+            "content": message.content
+            if isinstance(message.content, str)
+            else [{"type": "text", "text": block.text} for block in message.content if hasattr(block, "text")],
+        }
 
-                if isinstance(msg.content, str):
-                    lines.append(msg.content)
-                else:
-                    for block in msg.content:
-                        if hasattr(block, "text"):
-                            lines.append(block.text)
-
-                lines.append("")
-
-            return "\n".join(lines)
-
-        msg = f"Unknown export format: {format}"
-        raise ValueError(msg)
-
-
-class SessionTemplate:
-    """Pre-configured session templates."""
-
-    TEMPLATES = {
-        "code_review": {
-            "system": "You are a code reviewer. Analyze the provided code for bugs, performance issues, and best practices.",
-            "initial_messages": [
-                Message(
-                    role=MessageRole.SYSTEM,
-                    content="Ready to review code. Please provide the code you'd like me to analyze.",
-                ),
-            ],
-        },
-        "debugging": {
-            "system": "You are a debugging assistant. Help identify and fix issues in the provided code.",
-            "initial_messages": [
-                Message(
-                    role=MessageRole.SYSTEM,
-                    content="Ready to help debug. Please describe the issue and provide relevant code.",
-                ),
-            ],
-        },
-        "architecture": {
-            "system": "You are a software architect. Help design and improve system architectures.",
-            "initial_messages": [
-                Message(
-                    role=MessageRole.SYSTEM,
-                    content="Ready to discuss architecture. What system would you like to design or improve?",
-                ),
-            ],
-        },
-        "testing": {
-            "system": "You are a testing expert. Help write comprehensive tests and improve test coverage.",
-            "initial_messages": [
-                Message(
-                    role=MessageRole.SYSTEM,
-                    content="Ready to help with testing. What code would you like to test?",
-                ),
-            ],
-        },
-    }
+    def _message_to_str(self, message: Message) -> str:
+        if isinstance(message.content, str):
+            return message.content
+        else:
+            return "\n".join(block.text for block in message.content if hasattr(block, "text"))
 
     @classmethod
-    def create_from_template(cls, template_name: str, session_id: str | None = None) -> Session:
+    def from_template(cls, session_id: str, template_name: str) -> "SessionManager":
         """Create a session from a template."""
         if template_name not in cls.TEMPLATES:
             msg = f"Unknown template: {template_name}"
