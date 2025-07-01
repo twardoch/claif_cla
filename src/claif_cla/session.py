@@ -1,7 +1,6 @@
 """Session management for Claude conversations."""
 
 import json
-import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -297,8 +296,7 @@ class SessionManager:
     def _message_to_str(self, message: Message) -> str:
         if isinstance(message.content, str):
             return message.content
-        else:
-            return "\n".join(block.text for block in message.content if hasattr(block, "text"))
+        return "\n".join(block.text for block in message.content if hasattr(block, "text"))
 
     @classmethod
     def from_template(cls, session_id: str, template_name: str) -> "SessionManager":
