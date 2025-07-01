@@ -34,6 +34,7 @@ classifiers = [
 
 dependencies = [
     "claif",
+    "claude_code_sdk"
 ]
 
 # Author information
