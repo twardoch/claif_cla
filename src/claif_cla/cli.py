@@ -1,6 +1,7 @@
 """Fire-based CLI for CLAIF Claude wrapper."""
 
 import asyncio
+import os
 import sys
 import time
 
@@ -12,8 +13,10 @@ from claif.common import (
     ResponseMetrics,
     format_metrics,
     format_response,
+    install_provider,
+    uninstall_provider,
 )
-from claif.common.config import get_config
+from claif.common.config import load_config
 from loguru import logger
 from rich.console import Console
 from rich.live import Live
@@ -22,7 +25,7 @@ from rich.prompt import Confirm, Prompt
 
 from claif_cla import query
 from claif_cla.session import SessionManager
-from claif_cla.wrapper import ClaudeWrapper
+# from claif_cla.wrapper import ClaudeWrapper
 
 console = Console()
 
@@ -32,10 +35,10 @@ class ClaudeCLI:
 
     def __init__(self, config_file: str | None = None, *, verbose: bool = False):
         """Initialize CLI with optional config file."""
-        self.config = get_config(config_file)
+        self.config = load_config(config_file)
         if verbose:
             self.config.verbose = True
-        self.wrapper = ClaudeWrapper(self.config)
+        # self.wrapper = ClaudeWrapper(self.config)
         self.session_manager = SessionManager(self.config.session_dir)
         logger.debug("Initialized Claude CLI")
 
@@ -362,6 +365,87 @@ class ClaudeCLI:
         if message_count == 0:
             msg = "No response received"
             raise Exception(msg)
+
+    def install(self) -> None:
+        """Install Claude provider (npm package + bundling + installation).
+
+        This will:
+        1. Install bun if not available
+        2. Install the latest @anthropic-ai/claude-code package
+        3. Bundle it into a standalone executable
+        4. Install the executable to ~/.local/bin (or equivalent)
+        """
+        from claif_cla.install import install_claude
+
+        console.print("[bold]Installing Claude provider...[/bold]")
+        result = install_claude()
+
+        if result["installed"]:
+            console.print("[green]✅ Claude provider installed successfully![/green]")
+            console.print("[green]You can now use the 'claude' command from anywhere[/green]")
+        else:
+            console.print(f"[red]❌ Failed to install Claude provider: {result.get('message', 'Unknown error')}[/red]")
+            if result.get("failed"):
+                console.print(f"[red]Failed components: {', '.join(result['failed'])}[/red]")
+            sys.exit(1)
+
+    def uninstall(self) -> None:
+        """Uninstall Claude provider (remove bundled executable).
+
+        This will remove the bundled Claude executable from the install directory.
+        """
+        from claif_cla.install import uninstall_claude
+
+        console.print("[bold]Uninstalling Claude provider...[/bold]")
+        result = uninstall_claude()
+
+        if result["uninstalled"]:
+            console.print("[green]✅ Claude provider uninstalled successfully![/green]")
+        else:
+            console.print(
+                f"[red]❌ Failed to uninstall Claude provider: {result.get('message', 'Unknown error')}[/red]"
+            )
+            if result.get("failed"):
+                console.print(f"[red]Failed components: {', '.join(result['failed'])}[/red]")
+            sys.exit(1)
+
+    def status(self) -> None:
+        """Show Claude provider installation status."""
+        from claif_cla.install import get_claude_status, get_install_location
+        import shutil
+
+        console.print("[bold]Claude Provider Status[/bold]\n")
+
+        # Get installation status
+        status = get_claude_status()
+        install_dir = get_install_location()
+
+        if status["installed"]:
+            console.print(f"[green]✓ Installed: {status['path']} ({status['type']})[/green]")
+        else:
+            console.print("[yellow]○ Not installed[/yellow]")
+
+        # Check if command is available in PATH
+        try:
+            if shutil.which("claude"):
+                console.print("[green]✓ 'claude' command available in PATH[/green]")
+            else:
+                console.print("[yellow]○ 'claude' command not in PATH[/yellow]")
+        except Exception:
+            console.print("[red]✗ Error checking command availability[/red]")
+
+        # Show install directory in PATH status
+        path_env = os.environ.get("PATH", "")
+        if str(install_dir) in path_env:
+            console.print("[green]✓ Install directory in PATH[/green]")
+        else:
+            console.print(f"[yellow]⚠ Install directory not in PATH: {install_dir}[/yellow]")
+            console.print('[yellow]  Add to PATH with: export PATH="$HOME/.local/bin:$PATH"[/yellow]')
+
+        console.print("\n[bold]Helpful Commands:[/bold]")
+        console.print("  [cyan]claif_cla install[/cyan] - Install Claude provider")
+        console.print("  [cyan]claif_cla uninstall[/cyan] - Uninstall Claude provider")
+        console.print("  [cyan]claif_cla health[/cyan] - Check Claude service health")
 
     def interactive(self, session: str | None = None) -> None:
         """Start an interactive session with Claude.

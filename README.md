@@ -4,7 +4,7 @@
 
 ## Quickstart
 
-`claif_cla` is a Python wrapper for Claude that provides session management, tool approval strategies, and a rich CLI interface. Install it and start chatting with Claude in seconds:
+`claif_cla` is a Python wrapper for Claude that provides session management, tool approval strategies, and a rich CLI interface. Version 1.0.8 improves message type handling between claude-code-sdk and CLAIF formats. Install it and start chatting with Claude in seconds:
 
 ```bash
 pip install claif_cla && python -m claif_cla.cli ask "Hello, Claude!"

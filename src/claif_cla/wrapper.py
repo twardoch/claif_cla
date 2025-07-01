@@ -13,7 +13,7 @@ from claif.common import (
     ProviderError,
 )
 from claif.common import (
-    TimeoutError as ClaifTimeoutError,
+    ClaifTimeoutError,
 )
 from claude_code import ClaudeCodeClient
 from claude_code.code_tools import CodeToolFactory

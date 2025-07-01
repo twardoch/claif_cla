@@ -5,7 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.8] - 2025-07-01
+
+### Added
+- Added reference documentation file (claude-cli-usage.txt)
+- Added message conversion functions to properly handle UserMessage, AssistantMessage, and SystemMessage types from claude-code-sdk
+- Added proper conversion of content blocks to text for assistant messages
+
+### Changed
+- Improved message type handling with explicit conversion between claude-code-sdk and CLAIF message formats
+- Enhanced imports to include more specific message types (AssistantMessage, ResultMessage, SystemMessage, UserMessage)
+- Import organization improvements in session.py
+
+### Fixed
+- Fixed message conversion issues between claude-code-sdk and CLAIF formats
+- Proper handling of different message content types and blocks
+
+## [1.0.7] - 2025-07-01
+
+[Previous version - no changelog entry]
+
+## [1.0.6] - 2025-07-01
+
+[Previous version - no changelog entry]
+
+## [1.0.5] - 2025-07-01
+
+[Previous version - no changelog entry]
+
+## [1.0.4] - 2025-07-01
+
+[Previous version - no changelog entry]
+
+## [1.0.3] - 2025-07-01
+
+[Previous version - no changelog entry]
+
+## [1.0.2] - 2025-07-01
 
 ### Changed
 - Migrated logging from `claif.common.get_logger` to direct `loguru` usage for simplified logging
