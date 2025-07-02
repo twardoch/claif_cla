@@ -184,37 +184,41 @@ claif_cla/
 
 ## Success Criteria for v1.x
 
-1. **Reliability**: 99.9% uptime for basic operations
-2. **Performance**: < 50ms overhead for SDK calls
-3. **Testing**: 80%+ test coverage with mocks
-4. **Error Handling**: Clear, actionable messages
-5. **Cross-Platform**: Works on all major platforms
-6. **Documentation**: Complete user and dev docs
-7. **Sessions**: Reliable persistence and recovery
+1.  **Reliability**: 99.9% uptime for basic operations
+2.  **Performance**: < 50ms overhead for SDK calls
+3.  **Testing**: 80%+ test coverage with mocks
+4.  **Error Handling**: Clear, actionable messages
+5.  **Cross-Platform**: Works on all major platforms
+6.  **Documentation**: Complete user and dev docs
+7.  **Sessions**: Reliable persistence and recovery
 
 ## Development Priorities
 
 ### Immediate (v1.0.11)
-1. Add comprehensive test suite
-2. Fix async/await issues
-3. Improve error messages
+1.  Fix async/await issues (replace time.sleep)
+2.  Add proper async context managers
+3.  Fix async cleanup in wrapper
+4.  Investigate `claude-code-sdk` and its `claude_code` dependency. The module is not found even when the SDK is installed.
+5.  Add context to SDK errors
+6.  Clear API key missing messages
+7.  Installation failure guidance
 
 ### Short-term (v1.1.0)
-1. Enhanced session management
-2. Complete documentation
-3. Performance optimization
+1.  Enhanced session management
+2.  Complete documentation
+3.  Performance optimization
 
 ### Medium-term (v1.2.0)
-1. Advanced approval strategies
-2. Response caching
-3. Extended CLI commands
+1.  Advanced approval strategies
+2.  Response caching
+3.  Extended CLI commands
 
 ## Non-Goals for v1.x
 
-- Complex UI features
-- Database backends
-- Multi-user support
-- Custom SDK modifications
-- Advanced caching
+-   Complex UI features
+-   Database backends
+-   Multi-user support
+-   Custom SDK modifications
+-   Advanced caching
 
 Keep the codebase lean and focused on being a reliable Claude provider for Claif.

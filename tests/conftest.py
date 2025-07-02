@@ -1,16 +1,74 @@
 """Pytest configuration and fixtures for claif_cla tests."""
 
+import sys
+from unittest.mock import AsyncMock, MagicMock, Mock
+
+# Mock external dependencies BEFORE any imports that might use them
+# This needs to happen at module level, not in fixtures
+
+# Create mock claude_code module
+mock_claude_code = MagicMock()
+mock_claude_client = MagicMock()
+mock_claude_client.query = AsyncMock()
+mock_claude_client.close = AsyncMock()
+mock_claude_code.ClaudeCodeClient = Mock(return_value=mock_claude_client)
+
+# Create mock code_tools
+mock_code_tools = MagicMock()
+mock_code_tools.CodeToolFactory = MagicMock()
+mock_claude_code.code_tools = mock_code_tools
+
+# Create mock message classes
+class MockMessage:
+    pass
+
+class MockUserMessage(MockMessage):
+    def __init__(self, content=""):
+        self.content = content
+
+class MockAssistantMessage(MockMessage):
+    def __init__(self, content=None):
+        self.content = content or []
+
+class MockSystemMessage(MockMessage):
+    def __init__(self, content=""):
+        self.content = content
+
+class MockResultMessage(MockMessage):
+    def __init__(self, content=""):
+        self.content = content
+
+class MockClaudeCodeOptions:
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+# Create mock claude_code_sdk
+mock_sdk = MagicMock()
+mock_sdk.query = AsyncMock()
+mock_sdk.ClaudeCodeOptions = MockClaudeCodeOptions
+mock_sdk.Message = MockMessage
+mock_sdk.UserMessage = MockUserMessage
+mock_sdk.AssistantMessage = MockAssistantMessage
+mock_sdk.SystemMessage = MockSystemMessage
+mock_sdk.ResultMessage = MockResultMessage
+
+# Install the mocks
+sys.modules["claude_code"] = mock_claude_code
+sys.modules["claude_code.code_tools"] = mock_code_tools
+sys.modules["claude_code_sdk"] = mock_sdk
+
+# Now we can import other modules
 import asyncio
 import json
 import tempfile
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 from claif.common import ClaifOptions, Message, MessageRole, TextBlock
-from claude_code_sdk import AssistantMessage, ClaudeCodeOptions, UserMessage
 
 
 @pytest.fixture
@@ -24,8 +82,8 @@ def temp_dir() -> Iterator[Path]:
 def mock_claude_response() -> list[Any]:
     """Mock Claude response messages."""
     return [
-        UserMessage(content="Test prompt"),
-        AssistantMessage(
+        MockUserMessage(content="Test prompt"),
+        MockAssistantMessage(
             content=[
                 Mock(text="This is a test response"),
                 Mock(text="With multiple parts"),
@@ -50,10 +108,10 @@ def mock_claif_options() -> ClaifOptions:
 def mock_claude_query() -> AsyncMock:
     """Mock the claude_query function."""
 
-    async def _mock_query(prompt: str, options: ClaudeCodeOptions) -> AsyncIterator[Any]:
+    async def _mock_query(prompt: str, options: Any) -> AsyncIterator[Any]:
         # Yield mock messages
-        yield UserMessage(content=prompt)
-        yield AssistantMessage(
+        yield MockUserMessage(content=prompt)
+        yield MockAssistantMessage(
             content=[
                 Mock(text="Mock response"),
             ]
@@ -135,32 +193,22 @@ def event_loop():
     loop.close()
 
 
-# Mock external dependencies that might not be installed
-@pytest.fixture(autouse=True)
-def mock_claude_code_sdk():
-    """Mock claude-code-sdk if not installed."""
-    import sys
-
-    # Create mock modules
-    mock_sdk = MagicMock()
-    mock_sdk.query = AsyncMock()
-    mock_sdk.ClaudeCodeOptions = Mock
-    mock_sdk.Message = Mock
-    mock_sdk.UserMessage = Mock
-    mock_sdk.AssistantMessage = Mock
-    mock_sdk.SystemMessage = Mock
-    mock_sdk.ResultMessage = Mock
-
-    # Only mock if not already imported
-    if "claude_code_sdk" not in sys.modules:
-        sys.modules["claude_code_sdk"] = mock_sdk
-
-    yield
-
-    # Clean up
-    if "claude_code_sdk" in sys.modules and sys.modules["claude_code_sdk"] is mock_sdk:
-        del sys.modules["claude_code_sdk"]
-
+@pytest.fixture
+def mock_config():
+    """Create a mock configuration for tests."""
+    from claif.common import Config, Provider
+    
+    return Config(
+        default_provider=Provider.CLAUDE,
+        verbose=False,
+        providers={
+            "claude": {
+                "enabled": True,
+                "model": "claude-3-sonnet",
+                "extra": {"api_key": "test-key"}
+            }
+        }
+    )
 
 @pytest.fixture
 def mock_claif_common():
