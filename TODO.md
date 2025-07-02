@@ -1,58 +1,46 @@
 # claif_cla TODO List
 
-## Immediate Tasks (v1.1)
+## Essential MVP Tasks
 
-### 🔴 Critical Bugs
+### Core Functionality
 - [ ] Add proper error handling for missing API keys
 - [ ] Implement async cleanup in wrapper (replace time.sleep with asyncio.sleep)
 - [ ] Add timeout handling for long-running queries
 - [ ] Validate claude-code-sdk options before passing through
 
-### 🟡 Essential Features
-- [ ] Create integration tests with mocked Claude responses  
-- [ ] Add unit tests for all modules (current coverage ~0%)
+### Auto-Install Support (Issue #201) - ✅ COMPLETED
+- [x] Implement auto-install of claude-code-sdk when missing
+- [x] Add CLI detection and installation prompts
+- [x] Integrate with bun bundling for offline installation
+- [x] Wire existing install commands as exception handlers
+- [x] Add post-install configuration prompts with terminal opening
+
+### Rich Dependencies - ✅ COMPLETED
+- [x] Remove all rich dependencies from CLI
+- [x] Replace rich.console with loguru logging
+- [x] Simplify progress indicators and output formatting
+- [x] Use plain text output with clear formatting
+
+### Testing
+- [ ] Create integration tests with mocked Claude responses
+- [ ] Add unit tests for all modules
 - [ ] Test CLI entry point installation
 - [ ] Add --version flag for CLI
-- [ ] Create minimal working examples in docs/
 
-### 🟢 Documentation
+### Documentation
 - [ ] Add troubleshooting guide
 - [ ] Document all CLI commands with examples
 - [ ] Create getting started guide
-- [ ] Add API reference documentation
-
-## Near-term Improvements (v1.2)
-
-### Features
-- [ ] Session search functionality
-- [ ] Session tags and metadata
-- [ ] Progress indicators for long operations
-- [ ] Debug logging mode
-- [ ] Performance benchmarks
-
-### Code Quality
-- [ ] Improve error messages with actionable suggestions
-- [ ] Add more specific exception types
-- [ ] Profile memory usage for large sessions
-- [ ] Optimize session loading performance
 
 ## Known Issues
-
-### High Priority
-- [ ] Session timestamps may lack timezone info in some cases
+- [ ] Session timestamps may lack timezone info
 - [ ] Cache directory creation could fail silently
 - [ ] No validation for claude-code-sdk responses
 
-### Medium Priority  
-- [ ] Some imports could be optimized
-- [ ] Consider using pathlib throughout instead of string paths
-- [ ] Standardize logging format across modules
-
 ## Technical Debt
-
-1. **Testing**: Minimal test coverage - need comprehensive test suite
-2. **Error Handling**: Some generic exception catching should be more specific
-3. **Type Safety**: Some dict parameters could use TypedDict for better typing
+- [ ] Improve error messages with actionable suggestions
+- [ ] Add more specific exception types
+- [ ] Consider using pathlib throughout instead of string paths
 
 ## Contributing Guidelines
 

@@ -9,11 +9,9 @@ from pathlib import Path
 
 from claif.common import (
     ClaifOptions,
+    ClaifTimeoutError,
     Config,
     ProviderError,
-)
-from claif.common import (
-    ClaifTimeoutError,
 )
 from claude_code import ClaudeCodeClient
 from claude_code.code_tools import CodeToolFactory

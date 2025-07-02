@@ -4,19 +4,19 @@
 
 ## Quickstart
 
-`claif_cla` is a Python wrapper for Claude that provides session management, tool approval strategies, and a rich CLI interface. Version 1.0.8 improves message type handling between claude-code-sdk and CLAIF formats. Install it and start chatting with Claude in seconds:
+`claif_cla` is a Python wrapper for Claude that provides session management, tool approval strategies, and a rich CLI interface. Version 1.0.8 improves message type handling between claude-code-sdk andClaif formats. Install it and start chatting with Claude in seconds:
 
 ```bash
 pip install claif_cla && python -m claif_cla.cli ask "Hello, Claude!"
 ```
 
-`claif_cla` is a Python package that provides a thin wrapper around the [`claude_code_sdk`](https://github.com/anthropics/claude-code-sdk-python) package, integrating Anthropic's [Claude Code CLI](https://github.com/anthropics/claude-code) into the CLAIF (Command-Line AI Framework) ecosystem.
+`claif_cla` is a Python package that provides a thin wrapper around the [`claude_code_sdk`](https://github.com/anthropics/claude-code-sdk-python) package, integrating Anthropic's [Claude Code CLI](https://github.com/anthropics/claude-code) into theClaif (Command-Line AI Framework) ecosystem.
 
 ## What is claif_cla?
 
-This package acts as a bridge between the CLAIF framework and Claude's AI capabilities. It provides a minimal interface that:
+This package acts as a bridge between theClaif framework and Claude's AI capabilities. It provides a minimal interface that:
 
-- Wraps `claude_code_sdk` with CLAIF-standard options
+- Wraps `claude_code_sdk` withClaif-standard options
 - Manages persistent conversation sessions
 - Implements flexible tool approval strategies for MCP (Model Context Protocol) tools
 - Provides response caching to reduce API costs
@@ -162,7 +162,7 @@ patterns = create_approval_strategy("pattern", {
 2. **Session Persistence**: Save and restore conversations across sessions
 3. **Tool Control**: Fine-grained control over MCP tool approval
 4. **Response Caching**: Built-in caching reduces API costs
-5. **CLAIF Integration**: Works seamlessly with other CLAIF providers
+5. **CLAIF Integration**: Works seamlessly with otherClaif providers
 
 ## How It Works
 
@@ -182,7 +182,7 @@ claif_cla/
 ### Core Components
 
 1. **Main Module** (`__init__.py`)
-   - Provides the `query` function that converts CLAIF options to Claude options
+   - Provides the `query` function that convertsClaif options to Claude options
    - Thin wrapper around `claude_code_sdk.query`
    - Uses loguru for logging
 
@@ -211,7 +211,7 @@ claif_cla/
 ### Data Flow
 
 1. User provides prompt and options
-2. CLAIF options are converted to ClaudeCodeOptions
+2.Claif options are converted to ClaudeCodeOptions
 3. Request is forwarded to claude_code_sdk
 4. Responses are streamed back from Claude API
 5. Optional caching based on prompt+options hash
@@ -257,7 +257,7 @@ MIT License - see LICENSE file for details.
 
 ## Related Projects
 
-- [CLAIF](https://github.com/twardoch/claif) - The main CLAIF framework
+- [CLAIF](https://github.com/twardoch/claif) - The mainClaif framework
 - [claude-code-sdk](https://github.com/anthropics/claude-code-sdk-python) - Anthropic's Claude SDK
-- [claif_cod](https://github.com/twardoch/claif_cod) - CLAIF provider for OpenAI Codex
-- [claif_gem](https://github.com/twardoch/claif_gem) - CLAIF provider for Google Gemini
+- [claif_cod](https://github.com/twardoch/claif_cod) -Claif provider for OpenAI Codex
+- [claif_gem](https://github.com/twardoch/claif_gem) -Claif provider for Google Gemini

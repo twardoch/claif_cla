@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncIterator
 
-from claif.common import ClaifOptions, MessageRole, TextBlock
+from claif.common import ClaifOptions, MessageRole
 from claif.common import Message as ClaifMessage
 from claude_code_sdk import (
     AssistantMessage,
@@ -22,7 +22,7 @@ except ImportError:
 
 
 def _convert_claude_message_to_claif(claude_message: Message) -> ClaifMessage | None:
-    """Convert claude-code-sdk message to CLAIF message."""
+    """Convert claude-code-sdk message toClaif message."""
     if isinstance(claude_message, UserMessage):
         return ClaifMessage(
             role=MessageRole.USER,
@@ -54,18 +54,35 @@ def _convert_claude_message_to_claif(claude_message: Message) -> ClaifMessage | 
     )
 
 
+def _is_cli_missing_error(error: Exception) -> bool:
+    """Check if error indicates missing CLI tool."""
+    error_str = str(error).lower()
+    error_indicators = [
+        "command not found",
+        "no such file or directory",
+        "is not recognized as an internal or external command",
+        "cannot find",
+        "not found",
+        "executable not found",
+        "claude not found",
+        "permission denied",
+        "filenotfounderror",
+    ]
+    return any(indicator in error_str for indicator in error_indicators)
+
+
 async def query(
     prompt: str,
     options: ClaifOptions | None = None,
 ) -> AsyncIterator[ClaifMessage]:
-    """Query Claude using claude-code-sdk.
+    """Query Claude using claude-code-sdk with auto-install on missing tools.
 
-    This is a thin wrapper that converts CLAIF options to ClaudeCodeOptions
-    and passes through to the claude-code-sdk.
+    This function automatically installs Claude CLI if it's missing and the
+    query fails due to missing tools.
 
     Args:
         prompt: The prompt to send to Claude
-        options: Optional CLAIF options
+        options: OptionalClaif options
 
     Yields:
         Messages from Claude
@@ -73,7 +90,7 @@ async def query(
     if options is None:
         options = ClaifOptions()
 
-    # Convert CLAIF options to Claude options
+    # ConvertClaif options to Claude options
     claude_options = ClaudeCodeOptions(
         model=options.model,
         system_prompt=options.system_prompt,
@@ -82,11 +99,42 @@ async def query(
 
     logger.debug(f"Querying Claude with prompt: {prompt[:100]}...")
 
-    # Pass through to claude-code-sdk and convert messages
-    async for claude_message in claude_query(prompt=prompt, options=claude_options):
-        claif_message = _convert_claude_message_to_claif(claude_message)
-        if claif_message is not None:
-            yield claif_message
+    try:
+        # First attempt: try normal query
+        async for claude_message in claude_query(prompt=prompt, options=claude_options):
+            claif_message = _convert_claude_message_to_claif(claude_message)
+            if claif_message is not None:
+                yield claif_message
+    except Exception as e:
+        # Check if this is a missing CLI tool error
+        if _is_cli_missing_error(e):
+            logger.info("Claude CLI not found, attempting auto-install...")
+
+            # Import and run install
+            from claif_cla.install import install_claude
+
+            install_result = install_claude()
+
+            if install_result.get("installed"):
+                logger.info("Claude CLI installed, retrying query...")
+
+                # Retry the query
+                try:
+                    async for claude_message in claude_query(prompt=prompt, options=claude_options):
+                        claif_message = _convert_claude_message_to_claif(claude_message)
+                        if claif_message is not None:
+                            yield claif_message
+                except Exception as retry_error:
+                    logger.error(f"Query failed even after installing Claude CLI: {retry_error}")
+                    raise retry_error
+            else:
+                error_msg = install_result.get("message", "Unknown installation error")
+                logger.error(f"Auto-install failed: {error_msg}")
+                msg = f"Claude CLI not found and auto-install failed: {error_msg}"
+                raise Exception(msg) from e
+        else:
+            # Re-raise non-CLI-missing errors unchanged
+            raise e
 
 
 __all__ = ["ClaudeCodeOptions", "Message", "__version__", "query"]

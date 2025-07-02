@@ -1,114 +1,103 @@
-# claif_cla Development Plan
+# claif_cla Development Plan - MVP Focus
 
 ## Project Vision
 
-`claif_cla` is a thin, focused wrapper around `claude-code-sdk` that integrates Claude's capabilities into the CLAIF (Command-Line AI Framework) ecosystem. The goal is to provide a minimal yet complete interface that preserves all Claude-specific features while enabling seamless integration with other CLAIF providers.
+`claif_cla` is a minimal, production-ready wrapper around `claude-code-sdk` that integrates seamlessly with theClaif ecosystem. The focus is on delivering a stable, cross-platform MVP that auto-installs dependencies and works reliably.
 
-## Current Status (v1.0.1)
+## MVP Requirements (v1.0)
 
-### ✅ Completed Features
+### Core Functionality
+1. **Thin Claude SDK Wrapper**
+   - Async message streaming via claude-code-sdk
+   -Claif-compatible provider interface
+   - Proper error handling and timeouts
+   - Loguru-based logging (no rich dependencies)
 
-#### Core Functionality
+2. **Auto-Install Support (Issue #201)**
+   - Detect missing claude-code-sdk installation
+   - Auto-install via npm when missing
+   - Integrate with bun bundling for offline scenarios
+   - Clear user guidance during installation
 
-- Thin wrapper around claude-code-sdk with minimal overhead
-- CLAIF options to ClaudeCodeOptions conversion
-- Async message streaming support
-- Direct loguru logging integration
-- Basic error handling
+3. **CLI Interface**
+   - Fire-based CLI with simple output (no rich)
+   - Essential commands: ask, stream, health
+   - Session management (create, list, show, delete)
+   - Version information and help
 
-#### CLI Features
+4. **Cross-Platform Compatibility**
+   - Works on Windows, macOS, Linux
+   - Handles different Node.js installation paths
+   - Robust subprocess management
 
-- Fire-based CLI with rich terminal output
-- Basic commands: ask, stream, interactive
-- Session management: create, list, show, delete, export
-- Health check and benchmarking
-- Interactive mode with command support
+### Streamlined Architecture
 
-#### Session Management
+```
+claif_cla/
+├── wrapper.py     # Core Claude SDK integration
+├── cli.py         # Fire-based CLI (loguru only)
+├── session.py     # Session management
+├── approval.py    # Tool approval strategies
+└── install.py     # Auto-install functionality
+```
 
-- Persistent session storage in JSON format
-- Session branching and merging
-- Export to JSON and Markdown
-- Session templates (code_review, debugging, architecture, testing)
+## Implementation Priorities
 
-#### Tool Approval
+### Phase 1: Core Stability
+- [ ] Remove all rich dependencies, use loguru for output
+- [ ] Implement robust error handling
+- [ ] Add async cleanup and timeout handling
+- [ ] Validate claude-code-sdk options
 
-- 8 approval strategies implemented
-- Composite strategies with AND/OR logic
-- Strategy presets for common scenarios
-- Factory pattern for strategy creation
+### Phase 2: Auto-Install
+- [ ] CLI detection logic
+- [ ] npm installation wrapper
+- [ ] Bun bundle integration
+- [ ] User-friendly installation prompts
 
-#### Infrastructure
+### Phase 3: Testing & Polish
+- [ ] Unit tests for core modules
+- [ ] Integration tests with mocked responses
+- [ ] Cross-platform testing
+- [ ] Documentation and examples
 
-- GitHub Actions CI/CD
-- Pre-commit hooks configured
-- Basic test framework
-- Python 3.10+ support
-- Published to PyPI
+## Design Decisions
 
-## Near-term Goals (v1.1)
+### Simplified Dependencies
+- **Remove**: rich, complex UI libraries
+- **Keep**: loguru, fire, claude-code-sdk
+- **Add**: Auto-install utilities
 
-### Essential Improvements
+### Error Handling Strategy
+- Fail fast with clear error messages
+- Actionable suggestions for common issues
+- Graceful degradation when possible
 
-- [ ] Add proper error handling for missing API keys
-- [ ] Implement async cleanup in wrapper
-- [ ] Add timeout handling for long-running queries
-- [ ] Create integration tests with mocked Claude responses
-- [ ] Improve test coverage to >80%
-
-### Documentation
-
-- [ ] Add troubleshooting guide
-- [ ] Create more usage examples
-- [ ] Document all CLI commands with examples
-
-## Future Considerations (v1.2+)
-
-### Enhanced Features
-
-- [ ] Session search functionality
-- [ ] Session tags and metadata
-- [ ] Performance profiling commands
-- [ ] Memory usage optimization
-
-### Integration Improvements
-
-- [ ] Better MCP tool integration
-- [ ] Cross-provider session compatibility
-- [ ] Plugin system for custom strategies
-
-## Design Principles
-
-1. **Minimal Overhead**: Keep the wrapper thin and maintainable
-2. **Feature Preservation**: All Claude-specific features remain accessible
-3. **CLAIF Compatibility**: Seamless integration with the CLAIF ecosystem
-4. **Production Ready**: Robust error handling and logging
-5. **Developer First**: Clear APIs and comprehensive documentation
-
-## Technical Decisions
-
-### Architecture
-
-- Thin wrapper pattern to minimize maintenance burden
-- Direct pass-through of claude-code-sdk types where possible
-- Separate concerns: CLI, session management, approval strategies
-
-### Dependencies
-
-- Minimal external dependencies
-- Standard library preferred where possible
-- Direct loguru usage for simplified logging
-
-### Testing Strategy
-
-- Unit tests for core functionality
-- Integration tests with mocked responses
-- Property-based testing for complex operations
+### Session Management
+- JSON-based persistence (simple, reliable)
+- Basic templates for common use cases
+- Export capabilities (JSON, Markdown)
 
 ## Success Metrics
 
-1. **Reliability**: < 0.1% error rate in production
+1. **Reliability**: Works out-of-box with `uvx claif_cla`
 2. **Performance**: < 100ms overhead per query
-3. **Code Quality**: >80% test coverage
-4. **Documentation**: Clear, comprehensive, and up-to-date
-5. **Maintainability**: Simple codebase that's easy to understand
+3. **Usability**: Clear error messages, auto-install works
+4. **Maintainability**: < 1000 lines of code total
+5. **Cross-platform**: Tested on Windows, macOS, Linux
+
+## Non-Goals for MVP
+
+- Complex UI/rich formatting
+- Advanced session features
+- Performance optimizations
+- Extensive configuration options
+- Web interfaces
+
+## Release Strategy
+
+1. **v1.0**: MVP with auto-install
+2. **v1.1**: Bug fixes and polish
+3. **v1.2**: Enhanced features based on feedback
+
+This plan prioritizes shipping a working, reliable tool that users can install and use immediately without manual setup.

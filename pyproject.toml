@@ -1,6 +1,6 @@
 # this_file: pyproject.toml
 #==============================================================================
-# CLAIF_CLA PACKAGE CONFIGURATION
+#`claif_cla` PACKAGE CONFIGURATION
 # This pyproject.toml defines the package metadata, dependencies, build system,
 # and development environment for the claif_cla package.
 #==============================================================================
