@@ -18,10 +18,11 @@
 - [ ] Run full test suite to verify actual coverage
 - [ ] Set up GitHub Actions CI/CD
 
-### Async/Await Issues
-- [ ] Replace time.sleep with asyncio.sleep
-- [ ] Add proper async context managers
-- [ ] Fix async cleanup in wrapper
+### Async/Await Issues (BLOCKED)
+- [ ] **BLOCKED**: Fix async/await in claif_cla (replace time.sleep)
+- [ ] **BLOCKED**: Add proper async context managers
+- [ ] **BLOCKED**: Fix async cleanup in wrapper
+- [ ] **NEW**: Investigate `claude-code-sdk` and its `claude_code` dependency. The module is not found even when the SDK is installed.
 
 ### Error Messages
 - [ ] Add context to SDK errors

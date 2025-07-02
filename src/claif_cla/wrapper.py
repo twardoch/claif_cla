@@ -135,9 +135,10 @@ class ClaudeWrapper:
         retry_count = getattr(options, "retry_count", self.retry_count)
         retry_delay = getattr(options, "retry_delay", self.retry_delay)
         retry_backoff = self.retry_backoff
+        no_retry = getattr(options, "no_retry", False)
 
         # If retry is disabled, just run once
-        if retry_count <= 0:
+        if no_retry or retry_count <= 0:
             messages = []
             async for message in base_query(prompt, options):
                 messages.append(self._message_to_dict(message))
@@ -191,9 +192,19 @@ class ClaudeWrapper:
 
         except RetryError as e:
             # All retries failed
-            if last_error and "timeout" in str(last_error).lower():
+            error_str = str(last_error).lower() if last_error else str(e).lower()
+            
+            # Check for specific error types
+            if "timeout" in error_str:
                 msg = f"Claude query timed out after {retry_count} retries"
                 raise ClaifTimeoutError(msg) from last_error
+            elif any(indicator in error_str for indicator in ["quota", "rate limit", "429", "exhausted"]):
+                msg = f"Claude API quota/rate limit exceeded after {retry_count} retries"
+                raise ProviderError(
+                    "claude",
+                    msg,
+                    {"last_error": str(last_error) if last_error else str(e)}
+                ) from last_error
             else:
                 msg = "claude"
                 raise ProviderError(

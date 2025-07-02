@@ -84,6 +84,7 @@ class ClaudeCLI:
         show_metrics: bool = False,
         session: str | None = None,
         cache: bool = True,
+        no_retry: bool = False,
     ) -> None:
         """Execute a single query to Claude.
 
@@ -98,6 +99,7 @@ class ClaudeCLI:
             show_metrics: Show response metrics
             session: Session ID to use/create
             cache: Enable response caching
+            no_retry: Disable retry on failure
         """
         options = ClaifOptions(
             model=model,
@@ -109,6 +111,7 @@ class ClaudeCLI:
             session_id=session,
             cache=cache,
             verbose=self.config.verbose,
+            no_retry=no_retry,
         )
 
         start_time = time.time()
