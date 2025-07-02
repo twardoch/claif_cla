@@ -10,7 +10,9 @@ from claif.common import (
     ClaifOptions,
     Message,
     MessageRole,
+    Provider,
     ResponseMetrics,
+    TextBlock,
     format_metrics,
     format_response,
 )
@@ -59,8 +61,15 @@ class ClaudeCLI:
         if verbose:
             self.config.verbose = True
         # self.wrapper = ClaudeWrapper(self.config)
-        self.session_manager = SessionManager(self.config.session_dir)
+        self.session_manager: SessionManager | None = None
         logger.debug("Initialized Claude CLI")
+
+    async def _get_session_manager(self) -> SessionManager:
+        """Get or create the session manager."""
+        if self.session_manager is None:
+            self.session_manager = SessionManager(self.config.session_dir)
+            await self.session_manager.initialize()
+        return self.session_manager
 
     def ask(
         self,
@@ -118,10 +127,10 @@ class ClaudeCLI:
                 duration = time.time() - start_time
                 metrics = ResponseMetrics(
                     duration=duration,
-                    provider="claude",
+                    provider=Provider.CLAUDE,
                     model=model or "default",
                 )
-                _print("\n" + format_metrics(metrics))
+                _print(f"\n{format_metrics(metrics)}")
 
         except Exception as e:
             _print_error(str(e))
@@ -132,6 +141,7 @@ class ClaudeCLI:
     async def _ask_async(self, prompt: str, options: ClaifOptions) -> list[Message]:
         """Execute async query and collect messages."""
         messages = []
+        manager = await self._get_session_manager()
 
         async for claude_msg in query(prompt, options):
             # Convert Claude message to Claif message
@@ -143,7 +153,7 @@ class ClaudeCLI:
 
             # Save to session if enabled
             if options.session_id:
-                self.session_manager.add_message(options.session_id, msg)
+                await manager.add_message(options.session_id, msg)
 
         return messages
 
@@ -191,6 +201,7 @@ class ClaudeCLI:
     async def _stream_async(self, prompt: str, options: ClaifOptions) -> None:
         """Stream responses with live display."""
         content_buffer = []
+        manager = await self._get_session_manager()
 
         async for claude_msg in query(prompt, options):
             # Collect content for streaming display
@@ -199,7 +210,7 @@ class ClaudeCLI:
                 # Print incrementally for streaming effect
             elif isinstance(claude_msg.content, list):
                 for block in claude_msg.content:
-                    if hasattr(block, "text"):
+                    if isinstance(block, TextBlock):
                         content_buffer.append(block.text)
 
             # Save to session if enabled
@@ -208,7 +219,7 @@ class ClaudeCLI:
                     role=MessageRole(claude_msg.role),
                     content=claude_msg.content,
                 )
-                self.session_manager.add_message(options.session_id, msg)
+                await manager.add_message(options.session_id, msg)
 
     def session(self, action: str = "list", session_id: str | None = None, **kwargs) -> None:
         """Manage conversation sessions.
@@ -219,19 +230,31 @@ class ClaudeCLI:
             session_id: Session ID for actions that require it
             **kwargs: Additional arguments for specific actions
         """
+        try:
+            asyncio.run(self._session_async(action, session_id, **kwargs))
+        except Exception as e:
+            _print_error(str(e))
+            if self.config.verbose:
+                logger.exception("Full error details")
+            sys.exit(1)
+
+    async def _session_async(self, action: str, session_id: str | None, **kwargs) -> None:
+        """Async implementation for session management."""
+        manager = await self._get_session_manager()
+
         if action == "list":
-            sessions = self.session_manager.list_sessions()
+            sessions = await manager.list_sessions()
             if not sessions:
                 _print_warning("No sessions found")
             else:
                 _print("Active Sessions:")
                 for sid in sessions:
-                    info = self.session_manager.get_session_info(sid)
+                    info = await manager.get_session_info(sid)
                     count = info.get("message_count", 0)
                     _print(f"  • {sid}: {count} messages")
 
         elif action == "create":
-            session_id = session_id or self.session_manager.create_session()
+            session_id = session_id or await manager.create_session()
             _print_success(f"Created session: {session_id}")
 
         elif action == "delete":
@@ -239,14 +262,14 @@ class ClaudeCLI:
                 _print_error("Session ID required")
                 return
             if _confirm(f"Delete session {session_id}?"):
-                self.session_manager.delete_session(session_id)
+                await manager.delete_session(session_id)
                 _print_success(f"Deleted session: {session_id}")
 
         elif action == "show":
             if not session_id:
                 _print_error("Session ID required")
                 return
-            messages = self.session_manager.get_messages(session_id)
+            messages = await manager.get_messages(session_id)
             for msg in messages:
                 _print(f"{msg.role}:")
                 _print(format_response(msg))
@@ -258,7 +281,7 @@ class ClaudeCLI:
                 return
             output_format_str = kwargs.get("format", "markdown")
             output = kwargs.get("output")
-            content = self.session_manager.export_session(session_id, output_format_str)
+            content = await manager.export_session(session_id, output_format_str)
 
             if output:
                 with open(output, "w") as f:
@@ -272,7 +295,7 @@ class ClaudeCLI:
                 _print_error("Session ID required")
                 return
             point = kwargs.get("point", -1)
-            new_id = self.session_manager.branch_session(session_id, point)
+            new_id = await manager.branch_session(session_id, point)
             _print_success(f"Branched to new session: {new_id}")
 
         elif action == "merge":
@@ -284,7 +307,7 @@ class ClaudeCLI:
                 _print_error("Other session ID required (--other)")
                 return
             strategy = kwargs.get("strategy", "append")
-            self.session_manager.merge_sessions(session_id, other_id, strategy)
+            await manager.merge_sessions(session_id, other_id, strategy)
             _print_success(f"Merged {other_id} into {session_id}")
 
         else:
@@ -473,7 +496,19 @@ class ClaudeCLI:
         Args:
             session: Session ID to use/create
         """
-        session_id = session or self.session_manager.create_session()
+        try:
+            asyncio.run(self._interactive_async(session))
+        except KeyboardInterrupt:
+            _print_warning("\nExiting interactive session.")
+        except Exception as e:
+            _print_error(str(e))
+
+    async def _interactive_async(self, session_id: str | None) -> None:
+        """Async implementation for interactive session."""
+        manager = await self._get_session_manager()
+        if session_id is None:
+            session_id = await manager.create_session()
+
         _print("Interactive Claude Session")
         _print(f"Session ID: {session_id}")
         _print("Type 'exit' or 'quit' to end session")
@@ -488,22 +523,24 @@ class ClaudeCLI:
                     break
 
                 if prompt.startswith("/"):
-                    self._handle_command(prompt, session_id)
+                    await self._handle_command(prompt, session_id)
                     continue
 
                 _print("\nClaude:")
-                self.stream(prompt, session=session_id)
+                options = ClaifOptions(session_id=session_id, verbose=self.config.verbose)
+                await self._stream_async(prompt, options)
                 _print("")
 
             except KeyboardInterrupt:
-                _print_warning("Use 'exit' or 'quit' to end session")
+                _print_warning("\nUse 'exit' or 'quit' to end session. Press Ctrl+C again to force exit.")
             except Exception as e:
                 _print_error(str(e))
 
-    def _handle_command(self, command: str, session_id: str) -> None:
+    async def _handle_command(self, command: str, session_id: str) -> None:
         """Handle interactive session commands."""
         parts = command.split()
         cmd = parts[0].lower()
+        manager = await self._get_session_manager()
 
         if cmd == "/help":
             _print("Commands:")
@@ -518,11 +555,11 @@ class ClaudeCLI:
             os.system("clear" if os.name != "nt" else "cls")
 
         elif cmd == "/save":
-            self.session_manager.save_session(session_id)
+            await manager.save_session(session_id)
             _print_success("Session saved")
 
         elif cmd == "/history":
-            messages = self.session_manager.get_messages(session_id)
+            messages = await manager.get_messages(session_id)
             for msg in messages:
                 _print(f"{msg.role}: {msg.content}")
 

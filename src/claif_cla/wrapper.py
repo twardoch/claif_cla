@@ -17,6 +17,13 @@ from claude_code import ClaudeCodeClient
 from claude_code.code_tools import CodeToolFactory
 from claude_code_sdk import Message as ClaudeMessage
 from loguru import logger
+from tenacity import (
+    AsyncRetrying,
+    RetryError,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from claif_cla import query as base_query
 
@@ -124,49 +131,79 @@ class ClaudeWrapper:
                 yield self._dict_to_message(msg_data)
             return
 
+        # Use retry settings from options if available, otherwise use config defaults
+        retry_count = getattr(options, "retry_count", self.retry_count)
+        retry_delay = getattr(options, "retry_delay", self.retry_delay)
+        retry_backoff = self.retry_backoff
+
+        # If retry is disabled, just run once
+        if retry_count <= 0:
+            messages = []
+            async for message in base_query(prompt, options):
+                messages.append(self._message_to_dict(message))
+                yield message
+
+            # Cache successful response
+            if messages and options.cache:
+                self.cache.set(prompt, options, messages)
+            return
+
         # Collect messages for caching
         messages = []
-        retry_count = 0
         last_error = None
 
-        while retry_count <= self.retry_count:
-            try:
-                async for message in base_query(prompt, options):
-                    messages.append(self._message_to_dict(message))
-                    yield message
+        retry_exceptions = (
+            ClaifTimeoutError,
+            ProviderError,
+            ConnectionError,
+            TimeoutError,
+            Exception,  # Catch all for now
+        )
 
-                # Cache successful response
-                if messages and options.cache:
-                    self.cache.set(prompt, options, messages)
+        try:
+            async for attempt in AsyncRetrying(
+                stop=stop_after_attempt(retry_count),
+                wait=wait_exponential(
+                    multiplier=retry_delay,
+                    min=retry_delay,
+                    max=retry_delay * (retry_backoff ** (retry_count - 1)),
+                ),
+                retry=retry_if_exception_type(retry_exceptions),
+                reraise=True,
+            ):
+                with attempt:
+                    try:
+                        messages = []
+                        async for message in base_query(prompt, options):
+                            messages.append(self._message_to_dict(message))
+                            yield message
 
-                return
+                        # Cache successful response
+                        if messages and options.cache:
+                            self.cache.set(prompt, options, messages)
 
-            except Exception as e:
-                last_error = e
-                retry_count += 1
+                        return
 
-                if retry_count > self.retry_count:
-                    break
+                    except Exception as e:
+                        last_error = e
+                        logger.warning(f"Claude query attempt {attempt.retry_state.attempt_number} failed: {e}")
+                        raise
 
-                # Exponential backoff
-                delay = self.retry_delay * (self.retry_backoff ** (retry_count - 1))
-                logger.warning(f"Query failed, retrying in {delay}s: {e}")
-                await asyncio.sleep(delay)
-
-        # All retries failed
-        if "timeout" in str(last_error).lower():
-            msg = f"Claude query timed out after {self.retry_count} retries"
-            raise ClaifTimeoutError(msg)
-        else:
-            msg = "claude"
-            raise ProviderError(
-                msg,
-                f"Query failed after {self.retry_count} retries",
-                {
-                    "last_error": str(last_error),
-                    "prompt": prompt[:100],
-                },
-            )
+        except RetryError as e:
+            # All retries failed
+            if last_error and "timeout" in str(last_error).lower():
+                msg = f"Claude query timed out after {retry_count} retries"
+                raise ClaifTimeoutError(msg) from last_error
+            else:
+                msg = "claude"
+                raise ProviderError(
+                    msg,
+                    f"Query failed after {retry_count} retries",
+                    {
+                        "last_error": str(last_error) if last_error else str(e),
+                        "prompt": prompt[:100],
+                    },
+                ) from last_error
 
     def _message_to_dict(self, message: ClaudeMessage) -> dict:
         """Convert Claude message to dict for caching."""

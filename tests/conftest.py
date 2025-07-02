@@ -3,8 +3,9 @@
 import asyncio
 import json
 import tempfile
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -48,6 +49,7 @@ def mock_claif_options() -> ClaifOptions:
 @pytest.fixture
 def mock_claude_query() -> AsyncMock:
     """Mock the claude_query function."""
+
     async def _mock_query(prompt: str, options: ClaudeCodeOptions) -> AsyncIterator[Any]:
         # Yield mock messages
         yield UserMessage(content=prompt)
@@ -56,16 +58,14 @@ def mock_claude_query() -> AsyncMock:
                 Mock(text="Mock response"),
             ]
         )
-    
-    mock = AsyncMock(side_effect=_mock_query)
-    return mock
+
+    return AsyncMock(side_effect=_mock_query)
 
 
 @pytest.fixture
 def mock_install_claude() -> Mock:
     """Mock the install_claude function."""
-    mock = Mock(return_value={"installed": True, "failed": []})
-    return mock
+    return Mock(return_value={"installed": True, "failed": []})
 
 
 @pytest.fixture
@@ -83,24 +83,15 @@ def mock_session_file(mock_session_dir: Path) -> tuple[Path, str]:
     session_data = {
         "id": session_id,
         "created_at": "2024-01-01T00:00:00Z",
-        "messages": [
-            {
-                "role": "user",
-                "content": "Hello"
-            },
-            {
-                "role": "assistant",
-                "content": "Hi there!"
-            }
-        ],
+        "messages": [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi there!"}],
         "metadata": {},
-        "checkpoints": []
+        "checkpoints": [],
     }
-    
+
     session_file = mock_session_dir / f"{session_id}.json"
     with open(session_file, "w") as f:
         json.dump(session_data, f)
-    
+
     return session_file, session_id
 
 
@@ -116,11 +107,7 @@ def mock_approval_strategy() -> Mock:
 @pytest.fixture
 def mock_install_result() -> dict[str, Any]:
     """Mock installation result."""
-    return {
-        "installed": ["claude"],
-        "failed": [],
-        "message": "Success"
-    }
+    return {"installed": ["claude"], "failed": [], "message": "Success"}
 
 
 @pytest.fixture
@@ -153,7 +140,7 @@ def event_loop():
 def mock_claude_code_sdk():
     """Mock claude-code-sdk if not installed."""
     import sys
-    
+
     # Create mock modules
     mock_sdk = MagicMock()
     mock_sdk.query = AsyncMock()
@@ -163,13 +150,13 @@ def mock_claude_code_sdk():
     mock_sdk.AssistantMessage = Mock
     mock_sdk.SystemMessage = Mock
     mock_sdk.ResultMessage = Mock
-    
+
     # Only mock if not already imported
     if "claude_code_sdk" not in sys.modules:
         sys.modules["claude_code_sdk"] = mock_sdk
-    
+
     yield
-    
+
     # Clean up
     if "claude_code_sdk" in sys.modules and sys.modules["claude_code_sdk"] is mock_sdk:
         del sys.modules["claude_code_sdk"]
@@ -179,7 +166,7 @@ def mock_claude_code_sdk():
 def mock_claif_common():
     """Mock claif.common if not installed."""
     import sys
-    
+
     # Create mock module structure
     mock_common = MagicMock()
     mock_common.ClaifOptions = Mock
@@ -194,7 +181,7 @@ def mock_claif_common():
     mock_common.utils = MagicMock()
     mock_common.utils.prompt_tool_configuration = Mock()
     mock_common.install = MagicMock()
-    
+
     # Only mock if not already imported
     if "claif.common" not in sys.modules:
         sys.modules["claif"] = MagicMock()
@@ -202,7 +189,6 @@ def mock_claif_common():
         sys.modules["claif.common.config"] = mock_common.config
         sys.modules["claif.common.utils"] = mock_common.utils
         sys.modules["claif.install"] = mock_common.install
-    
-    yield
-    
+
+
     # Clean up is handled by the test framework

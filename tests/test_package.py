@@ -1,6 +1,7 @@
 """Test suite for claif_cla package structure."""
 
 import pytest
+
 import claif_cla
 
 
@@ -19,14 +20,14 @@ def test_package_exports():
     # Core function
     assert hasattr(claif_cla, "query")
     assert callable(claif_cla.query)
-    
+
     # Re-exported from claude-code-sdk
     assert hasattr(claif_cla, "ClaudeCodeOptions")
     assert hasattr(claif_cla, "Message")
-    
+
     # Version
     assert hasattr(claif_cla, "__version__")
-    
+
     # __all__ should be defined
     assert hasattr(claif_cla, "__all__")
     assert isinstance(claif_cla.__all__, list)
@@ -37,14 +38,11 @@ def test_package_exports():
 def test_submodules():
     """Test that submodules can be imported."""
     # These imports should not raise
-    from claif_cla import session
-    from claif_cla import approval
-    from claif_cla import cli
-    from claif_cla import install
-    from claif_cla import wrapper
-    
     # Verify they're modules
     import types
+
+    from claif_cla import approval, cli, install, session, wrapper
+
     assert isinstance(session, types.ModuleType)
     assert isinstance(approval, types.ModuleType)
     assert isinstance(cli, types.ModuleType)
@@ -56,4 +54,5 @@ def test_submodules():
 def test_cli_entry_point():
     """Test that CLI entry point exists."""
     from claif_cla.cli import main
+
     assert callable(main)

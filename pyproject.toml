@@ -47,9 +47,12 @@ classifiers = [
 dependencies = [
     "claif>=1.0.0",
     "claude-code-sdk>=0.0.1",
+    "claude-code",
     "fire>=0.7.0",
     "rich>=13.9.4",
     "loguru>=0.7.0",
+    "tenacity>=9.0.0",
+    "aiofiles>=23.2.1",
 ]
 
 # Author information
@@ -91,6 +94,7 @@ test = [
     'pytest-benchmark[histogram]>=5.1.0', # Benchmarking plugin - Keep pytest-benchmark as is, update if newer pytest-benchmark version is required
     'pytest-asyncio>=0.26.0', # Async test support - Keep pytest-asyncio as is, update if newer pytest-asyncio version is required
     'coverage[toml]>=7.6.12',
+    "pytest-fixture-config<=1.8.0",
 ]
 
 docs = [
@@ -104,6 +108,7 @@ docs = [
 all = [
     "claif>=1.0.0",
     "claude-code-sdk>=0.0.1",
+    "claude-code",
     "fire>=0.5.0",
     "rich>=13.9.4",
     "loguru>=0.7.0",
@@ -121,6 +126,7 @@ all = [
     'pytest-benchmark[histogram]>=5.1.0',
     'pytest-asyncio>=0.26.0',
     'coverage[toml]>=7.6.12',
+    "pytest-fixture-config<=1.8.0",
     # Include all docs dependencies
     "sphinx>=8.2.3",
     "sphinx-rtd-theme>=3.0.2",

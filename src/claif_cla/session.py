@@ -1,12 +1,14 @@
 """Session management for Claude conversations."""
 
+import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, ClassVar
 
-from claif.common import Message, MessageRole
+import aiofiles
+from claif.common import Message, MessageRole, TextBlock
 from loguru import logger
 
 
@@ -42,7 +44,7 @@ class Session:
         """Convert session to dictionary."""
         return {
             "id": self.id,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat().replace("+00:00", "Z"),
             "messages": [
                 {
                     "role": msg.role.value,
@@ -59,16 +61,17 @@ class Session:
     @classmethod
     def from_dict(cls, data: dict) -> "Session":
         """Create session from dictionary."""
+        created_at_str = data["created_at"]
+        if created_at_str.endswith("Z"):
+            created_at_str = created_at_str[:-1] + "+00:00"
         session = cls(
             session_id=data["id"],
-            created_at=datetime.fromisoformat(data["created_at"]),
+            created_at=datetime.fromisoformat(created_at_str),
         )
 
         for msg_data in data.get("messages", []):
             content = msg_data["content"]
             if isinstance(content, list):
-                from claif.common import TextBlock
-
                 content = [TextBlock(text=block["text"]) for block in content]
 
             message = Message(
@@ -132,40 +135,43 @@ class SessionManager:
             self.session_dir = Path(session_dir)
         else:
             self.session_dir = Path.home() / ".claif" / "sessions"
-
-        self.session_dir.mkdir(parents=True, exist_ok=True)
         self.active_sessions: dict[str, Session] = {}
 
-    def create_session(self, session_id: str | None = None) -> str:
+    async def initialize(self) -> None:
+        """Initialize the session directory."""
+        if not await asyncio.to_thread(self.session_dir.exists):
+            await asyncio.to_thread(self.session_dir.mkdir, parents=True, exist_ok=True)
+
+    async def create_session(self, session_id: str | None = None) -> str:
         """Create a new session."""
         if session_id is None:
             session_id = str(uuid.uuid4())
 
         session = Session(session_id)
         self.active_sessions[session_id] = session
-        self.save_session(session_id)
+        await self.save_session(session_id)
 
         logger.info(f"Created session: {session_id}")
         return session_id
 
-    def load_session(self, session_id: str) -> Session:
+    async def load_session(self, session_id: str) -> Session:
         """Load a session from disk."""
         if session_id in self.active_sessions:
             return self.active_sessions[session_id]
 
         session_file = self.session_dir / f"{session_id}.json"
-        if not session_file.exists():
+        if not await asyncio.to_thread(session_file.exists):
             msg = f"Session {session_id} not found"
             raise ValueError(msg)
 
-        with open(session_file) as f:
-            data = json.load(f)
+        async with aiofiles.open(session_file) as f:
+            data = json.loads(await f.read())
 
         session = Session.from_dict(data)
         self.active_sessions[session_id] = session
         return session
 
-    def save_session(self, session_id: str) -> None:
+    async def save_session(self, session_id: str) -> None:
         """Save a session to disk."""
         if session_id not in self.active_sessions:
             msg = f"Session {session_id} not active"
@@ -174,34 +180,36 @@ class SessionManager:
         session = self.active_sessions[session_id]
         session_file = self.session_dir / f"{session_id}.json"
 
-        with open(session_file, "w") as f:
-            json.dump(session.to_dict(), f, indent=2)
+        async with aiofiles.open(session_file, "w") as f:
+            await f.write(json.dumps(session.to_dict(), indent=2))
 
         logger.debug(f"Saved session: {session_id}")
 
-    def delete_session(self, session_id: str) -> None:
+    async def delete_session(self, session_id: str) -> None:
         """Delete a session."""
         session_file = self.session_dir / f"{session_id}.json"
-        if session_file.exists():
-            session_file.unlink()
+        if await asyncio.to_thread(session_file.exists):
+            await asyncio.to_thread(session_file.unlink)
 
         if session_id in self.active_sessions:
             del self.active_sessions[session_id]
 
         logger.info(f"Deleted session: {session_id}")
 
-    def list_sessions(self) -> list[str]:
+    async def list_sessions(self) -> list[str]:
         """List all available sessions."""
         sessions = []
-        for session_file in self.session_dir.glob("*.json"):
+        # glob is not easily awaitable, run in thread
+        session_files = await asyncio.to_thread(list, self.session_dir.glob("*.json"))
+        for session_file in session_files:
             session_id = session_file.stem
             sessions.append(session_id)
         return sorted(sessions)
 
-    def get_session_info(self, session_id: str) -> dict:
+    async def get_session_info(self, session_id: str) -> dict:
         """Get session information."""
         try:
-            session = self.load_session(session_id)
+            session = await self.load_session(session_id)
             return {
                 "id": session.id,
                 "created_at": session.created_at.isoformat(),
@@ -212,20 +220,20 @@ class SessionManager:
             logger.warning(f"Failed to load session {session_id}: {e}")
             return {"id": session_id, "error": str(e)}
 
-    def add_message(self, session_id: str, message: Message) -> None:
+    async def add_message(self, session_id: str, message: Message) -> None:
         """Add a message to a session."""
-        session = self.load_session(session_id)
+        session = await self.load_session(session_id)
         session.add_message(message)
-        self.save_session(session_id)
+        await self.save_session(session_id)
 
-    def get_messages(self, session_id: str) -> list[Message]:
+    async def get_messages(self, session_id: str) -> list[Message]:
         """Get all messages from a session."""
-        session = self.load_session(session_id)
+        session = await self.load_session(session_id)
         return session.messages
 
-    def branch_session(self, session_id: str, at_point: int = -1) -> str:
+    async def branch_session(self, session_id: str, at_point: int = -1) -> str:
         """Create a new session branching from an existing one."""
-        parent = self.load_session(session_id)
+        parent = await self.load_session(session_id)
 
         # Create new session
         new_id = str(uuid.uuid4())
@@ -240,15 +248,15 @@ class SessionManager:
         new_session.metadata["branch_point"] = at_point
 
         self.active_sessions[new_id] = new_session
-        self.save_session(new_id)
+        await self.save_session(new_id)
 
         logger.info(f"Branched session {session_id} -> {new_id} at point {at_point}")
         return new_id
 
-    def merge_sessions(self, target_id: str, source_id: str, strategy: str = "append") -> None:
+    async def merge_sessions(self, target_id: str, source_id: str, strategy: str = "append") -> None:
         """Merge two sessions."""
-        target = self.load_session(target_id)
-        source = self.load_session(source_id)
+        target = await self.load_session(target_id)
+        source = await self.load_session(source_id)
 
         if strategy == "append":
             target.messages.extend(source.messages)
@@ -266,13 +274,13 @@ class SessionManager:
             raise ValueError(msg)
 
         target.metadata[f"merged_from_{source_id}"] = datetime.now(timezone.utc).isoformat()
-        self.save_session(target_id)
+        await self.save_session(target_id)
 
         logger.info(f"Merged session {source_id} into {target_id} using {strategy}")
 
-    def export_session(self, session_id: str, export_format: str = "markdown") -> str:
+    async def export_session(self, session_id: str, export_format: str = "markdown") -> str:
         """Export session in various formats."""
-        session = self.load_session(session_id)
+        session = await self.load_session(session_id)
 
         if export_format == "json":
             return json.dumps([self._message_to_dict(m) for m in session.messages], indent=2)
@@ -299,7 +307,7 @@ class SessionManager:
         return "\n".join(block.text for block in message.content if hasattr(block, "text"))
 
     @classmethod
-    def from_template(cls, session_id: str, template_name: str) -> "SessionManager":
+    async def from_template(cls, session_id: str, template_name: str) -> "SessionManager":
         """Create a session from a template."""
         if template_name not in cls.TEMPLATES:
             msg = f"Unknown template: {template_name}"
@@ -317,4 +325,9 @@ class SessionManager:
         for msg in template.get("initial_messages", []):
             session.add_message(msg)
 
-        return session
+        manager = cls(session_dir=None)  # This is a bit awkward
+        manager.active_sessions[session_id] = session
+        await manager.initialize()
+        await manager.save_session(session_id)
+
+        return manager
