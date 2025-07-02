@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2025-01-02
+
+### Enhanced
+- **Retry Logic Improvements**: Enhanced existing tenacity retry mechanism for better quota handling
+  - Added `no_retry` field support in `ClaifOptions` 
+  - Improved error categorization to detect quota/rate limit errors specifically
+  - Enhanced error messages to indicate quota exhaustion vs other failures
+  - Added --no_retry CLI flag support in `ask` command
+
+### Changed
+- Modified `wrapper.py` to check for quota-specific error indicators
+- Updated retry error handling to provide clearer messages for different failure types
+- Enhanced error detection for: "quota", "rate limit", "429", "exhausted"
+
 ## [1.0.11] - 2025-07-02
 
 ### Added

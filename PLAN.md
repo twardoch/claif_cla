@@ -4,13 +4,15 @@
 
 `claif_cla` is the Claude provider for Claif, wrapping the `claude-code-sdk` package. The goal for v1.x is to create a stable, reliable MVP that works consistently across all platforms with excellent error handling and testing.
 
-## Current Status (v1.0.11)
+## Current Status (v1.0.12-dev)
 
 **Core Functionality**: Working claude-code-sdk wrapper ✅
 **Auto-Install**: Automatic SDK installation when missing ✅
 **CLI Interface**: Fire-based with clean output ✅
 **Session Management**: Basic session persistence ✅
 **Test Suite**: Comprehensive pytest structure with mocks ✅
+**Retry Logic**: Enhanced tenacity-based retry with quota detection ✅
+**Error Handling**: Improved quota/rate limit error messages ✅
 
 ## MVP v1.x Improvement Plan
 
