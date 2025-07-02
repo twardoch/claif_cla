@@ -15,17 +15,22 @@ class TestClaudeMessageConversion:
     def test_convert_user_message(self):
         """Test converting UserMessage to ClaifMessage."""
         from claif_cla import _convert_claude_message_to_claif
+        from claif.common import TextBlock
 
         claude_msg = UserMessage(content="Hello, Claude!")
         claif_msg = _convert_claude_message_to_claif(claude_msg)
 
         assert claif_msg is not None
         assert claif_msg.role == MessageRole.USER
-        assert claif_msg.content == "Hello, Claude!"
+        # Content is automatically converted to list of TextBlocks
+        assert len(claif_msg.content) == 1
+        assert isinstance(claif_msg.content[0], TextBlock)
+        assert claif_msg.content[0].text == "Hello, Claude!"
 
     def test_convert_assistant_message_with_text_blocks(self):
         """Test converting AssistantMessage with text blocks."""
         from claif_cla import _convert_claude_message_to_claif
+        from claif.common import TextBlock
 
         # Mock text blocks
         block1 = Mock(text="First part")
@@ -36,22 +41,29 @@ class TestClaudeMessageConversion:
 
         assert claif_msg is not None
         assert claif_msg.role == MessageRole.ASSISTANT
-        assert claif_msg.content == "First part\nSecond part"
+        # Content is automatically converted to list of TextBlocks
+        assert len(claif_msg.content) == 1
+        assert isinstance(claif_msg.content[0], TextBlock)
+        assert claif_msg.content[0].text == "First part\nSecond part"
 
     def test_convert_assistant_message_without_text_attr(self):
         """Test converting AssistantMessage with blocks lacking text attribute."""
         from claif_cla import _convert_claude_message_to_claif
+        from claif.common import TextBlock
 
         # Mock blocks without text attribute
         block1 = Mock(spec=[])  # No text attribute
-        block1.__str__ = Mock(return_value="Block 1 string")
+        block1.configure_mock(**{"__str__.return_value": "Block 1 string"})
 
         claude_msg = AssistantMessage(content=[block1])
         claif_msg = _convert_claude_message_to_claif(claude_msg)
 
         assert claif_msg is not None
         assert claif_msg.role == MessageRole.ASSISTANT
-        assert claif_msg.content == "Block 1 string"
+        # Content is automatically converted to list of TextBlocks
+        assert len(claif_msg.content) == 1
+        assert isinstance(claif_msg.content[0], TextBlock)
+        assert claif_msg.content[0].text == "Block 1 string"
 
     def test_skip_system_message(self):
         """Test that SystemMessage is skipped."""
@@ -74,6 +86,7 @@ class TestClaudeMessageConversion:
     def test_convert_unknown_message_type(self):
         """Test converting unknown message type."""
         from claif_cla import _convert_claude_message_to_claif
+        from claif.common import TextBlock
 
         # Mock unknown message type
         claude_msg = Mock()
@@ -83,7 +96,10 @@ class TestClaudeMessageConversion:
 
         assert claif_msg is not None
         assert claif_msg.role == MessageRole.SYSTEM
-        assert claif_msg.content == "Unknown message content"
+        # Content is automatically converted to list of TextBlocks
+        assert len(claif_msg.content) == 1
+        assert isinstance(claif_msg.content[0], TextBlock)
+        assert claif_msg.content[0].text == "Unknown message content"
 
 
 @pytest.mark.unit

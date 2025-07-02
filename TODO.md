@@ -1,158 +1,153 @@
-# claif_cla TODO List - v1.x Stable MVP
+# claif_cla TODO List - v1.0 MVP Stability Focus
 
-## Immediate Priority (v1.0.11)
+## CRITICAL (Blocking v1.0 Release)
 
-### Unit Testing ✅ COMPLETED
-- [x] Add pytest test suite for all modules
-- [x] Test wrapper.py SDK integration
-- [x] Test session.py file operations
-- [x] Test approval.py strategies
-- [x] Test CLI command parsing
-- [x] Test install.py functionality
-- [x] Mock claude-code-sdk responses
-- [x] Test error conditions and edge cases
-- [x] Achieve 80%+ code coverage (structure in place)
+### Test Suite Reliability
+- [ ] **Verify test coverage accuracy** - Run full pytest suite and confirm 80%+ coverage is real
+- [ ] **Fix any test environment issues** - Ensure tests pass reliably in clean environments
+- [ ] **Test all error conditions** - Validate error handling paths and edge cases
+- [ ] **Mock claude-code-sdk completely** - No external dependencies in test suite
 
-### Remaining Tasks
-- [ ] Fix pytest environment issues if any arise
-- [ ] Run full test suite to verify actual coverage
-- [ ] Set up GitHub Actions CI/CD
+### Critical Bug Fixes  
+- [ ] **Replace time.sleep with asyncio.sleep** - Fix async correctness throughout codebase
+- [ ] **Fix SDK import issues** - Resolve `claude_code` dependency problems
+- [ ] **Improve error handling** - Clear, actionable error messages for all failure modes
+- [ ] **Session file safety** - Prevent corruption, handle concurrent access
 
-### Async/Await Issues
-- [ ] Replace time.sleep with asyncio.sleep
-- [ ] Add proper async context managers
-- [ ] Fix async cleanup in wrapper
-- [ ] Investigate `claude-code-sdk` and its `claude_code` dependency. The module is not found even when the SDK is installed.
+### Essential Functionality
+- [ ] **Auto-install verification** - Ensure claude-code-sdk installs correctly
+- [ ] **Basic operations work** - Query, session management, approval strategies function
+- [ ] **Resource cleanup** - No memory leaks or hanging processes
 
-### Error Messages
-- [ ] Add context to SDK errors
-- [ ] Clear API key missing messages
-- [ ] Installation failure guidance
+## HIGH PRIORITY (Required for Stable Release)
 
-## Short-term Priority (v1.1.0)
+### Cross-Platform Reliability
+- [ ] **Test on Windows, macOS, Linux** - Verify all functionality works across platforms
+- [ ] **Path handling robustness** - Support spaces, Unicode, special characters
+- [ ] **Permission handling** - Proper error messages for permission issues
+- [ ] **SDK installation paths** - Handle various installation locations
 
 ### Integration Testing
-- [ ] Test with real claude-code-sdk
-- [ ] Test auto-install flow end-to-end
-- [ ] Test session persistence across runs
-- [ ] Test approval strategies in practice
-- [ ] Cross-platform compatibility tests
+- [ ] **Real SDK testing** - Test with actual claude-code-sdk when available
+- [ ] **End-to-end workflows** - Complete user scenarios from install to query
+- [ ] **Error recovery** - Network failures, timeouts, SDK crashes
+- [ ] **Session persistence** - Data survives across runs
 
-### Session Management
-- [ ] Atomic file operations
-- [ ] Handle concurrent access
-- [ ] Session corruption recovery
-- [ ] Proper file locking
-- [ ] Session validation
+## MEDIUM PRIORITY (Nice to Have for v1.0)
 
-### Documentation
-- [ ] Complete docstrings
-- [ ] Installation guide
-- [ ] Configuration guide
-- [ ] Session management guide
-- [ ] Approval strategies guide
-- [ ] Troubleshooting section
-
-## Medium-term Priority (v1.2.0)
-
-### Advanced Approval Strategies
-- [ ] Test all approval strategies
-- [ ] Add strategy composition
-- [ ] Strategy configuration
-- [ ] Logging of decisions
-- [ ] Custom strategy support
-
-### Session Features
-- [ ] Session templates
-- [ ] Session search/filter
-- [ ] Session metadata
-- [ ] Session archiving
-- [ ] Import/export formats
-
-### Response Caching
-- [ ] Implement caching mechanism
-- [ ] Cache invalidation
-- [ ] TTL management
-- [ ] Cache statistics
-
-## Testing & Reliability
-
-### Reliability Improvements
-- [ ] Handle SDK version compatibility
-- [ ] Test with network failures
-- [ ] Verify timeout handling
-- [ ] Retry transient failures
-- [ ] Fallback for missing features
-
-### Safety Features
-- [ ] Risk assessment framework
-- [ ] Approval audit logs
-- [ ] Strategy validation
-- [ ] Default safe strategies
-
-## Performance Optimization
-
-### Startup Performance
-- [ ] Profile import times
-- [ ] Lazy SDK loading
-- [ ] Cache initialization
-- [ ] Minimize dependencies
-
-### Runtime Performance
-- [ ] Optimize message streaming
-- [ ] Reduce memory usage
-- [ ] Session loading speed
-- [ ] Approval checking speed
-
-## Quality Standards
+### Essential Documentation
+- [ ] **Installation guide** - Clear setup instructions with troubleshooting
+- [ ] **Basic usage examples** - Common operations and workflows
+- [ ] **Session management guide** - How to use sessions effectively
+- [ ] **Error troubleshooting** - Solutions for common problems
 
 ### Code Quality
-- [ ] 100% type hint coverage
-- [ ] Google-style docstrings
-- [ ] Maximum complexity: 10
-- [ ] No nested functions > 2 levels
-- [ ] Clear variable names
+- [ ] **Complete docstrings** - All public functions documented
+- [ ] **Type hint coverage** - 100% type annotations
+- [ ] **Code organization** - Clean module structure and imports
 
-### Key Module Improvements
+## SUCCESS CRITERIA FOR v1.0
 
-#### wrapper.py
-- [ ] Add retry logic for SDK calls
-- [ ] Better error wrapping
-- [ ] Connection pooling
-- [ ] Response validation
+### Reliability (Must Have)
+- ✅ **99%+ success rate** for basic claude-code-sdk operations
+- ✅ **No resource leaks** in normal operation
+- ✅ **Graceful error handling** with clear messages
+- ✅ **Stable async operations** - No time.sleep blocking calls
 
-#### session.py
-- [ ] Atomic operations
-- [ ] Concurrent access handling
-- [ ] Corruption recovery
+### Testing (Must Have)
+- ✅ **80%+ test coverage** with verified accuracy
+- ✅ **All critical paths tested** including error conditions
+- ✅ **Mocked SDK dependencies** for reliable testing
+- ✅ **Cross-platform compatibility** verified
+
+### User Experience (Should Have)
+- ✅ **Auto-install works reliably** in clean environments
+- ✅ **Clear error messages** for setup and usage problems
+- ✅ **Session management** works predictably
+- ✅ **Fast startup time** (<3 seconds including SDK load)
+
+## NON-GOALS FOR v1.0
+
+Explicitly excluding to maintain focus:
+
+- ❌ **Advanced session features** (templates, search, metadata)
+- ❌ **Response caching** mechanisms
+- ❌ **Performance optimization** beyond basic functionality
+- ❌ **Complex approval strategies** beyond basic safety
+- ❌ **Multi-user support** or collaboration features
+- ❌ **Custom SDK modifications** or patches
+- ❌ **Advanced configuration** options
+- ❌ **Integration with other providers** beyond claif framework
+
+## RISK MITIGATION
+
+### High Risk Items
+1. **SDK dependency issues** → Could break core functionality
+   - **Mitigation**: Comprehensive testing with different SDK versions
+2. **Async/threading bugs** → Could cause hangs or crashes
+   - **Mitigation**: Replace all time.sleep, proper async patterns
+3. **Session corruption** → Could lose user data
+   - **Mitigation**: Atomic file operations, validation, backups
+
+### Medium Risk Items
+1. **Cross-platform compatibility** → Could limit adoption
+   - **Mitigation**: Test matrix with GitHub Actions
+2. **Error messaging** → Could cause user confusion
+   - **Mitigation**: User testing of error scenarios
+
+## MODULE FOCUS
+
+### wrapper.py (CRITICAL)
+- [ ] Fix async/await usage (no time.sleep)
+- [ ] Improve SDK error handling and translation
+- [ ] Add connection validation and retry logic
+- [ ] Resource cleanup on errors
+
+### session.py (HIGH)  
+- [ ] Atomic file operations for data safety
+- [ ] Handle concurrent access properly
+- [ ] Session validation and corruption recovery
+- [ ] Clear error messages for file issues
+
+### approval.py (MEDIUM)
+- [ ] Validate strategy configurations
+- [ ] Better logging of approval decisions  
+- [ ] Safe defaults for security
 - [ ] Performance optimization
 
-#### approval.py
-- [ ] Strategy validation
-- [ ] Performance optimization
-- [ ] Better logging
-- [ ] Custom strategies
+### cli.py (MEDIUM)
+- [ ] Standardized help text and error display
+- [ ] Progress indicators for long operations
+- [ ] Better argument validation
+- [ ] Consistent output formatting
 
-#### cli.py
-- [ ] Standardized help/version
-- [ ] Better error display
-- [ ] Progress indicators
-- [ ] Command shortcuts
+## DEFINITION OF DONE
 
-## Success Metrics
+For each task to be considered complete:
 
-- [ ] **Reliability**: 99.9% uptime for basic operations
-- [ ] **Performance**: < 50ms overhead for SDK calls
-- [ ] **Testing**: 80%+ test coverage with mocks
-- [ ] **Error Handling**: Clear, actionable messages
-- [ ] **Cross-Platform**: Works on all major platforms
-- [ ] **Documentation**: Complete user and dev docs
-- [ ] **Sessions**: Reliable persistence and recovery
+- [ ] **Implementation** meets requirements and handles edge cases
+- [ ] **Tests** cover the functionality with mocks where appropriate
+- [ ] **Error handling** includes clear, actionable messages
+- [ ] **Documentation** updated for user-facing changes
+- [ ] **Cross-platform** compatibility verified or documented limitations
+- [ ] **Performance** impact measured and acceptable
 
-## Non-Goals for v1.x
+## POST-v1.0 ROADMAP
 
-- Complex UI features
-- Database backends
-- Multi-user support
-- Custom SDK modifications
-- Advanced caching
+### v1.1 (Enhanced Features)
+- Advanced session features (templates, search, archiving)
+- Response caching for performance
+- Enhanced approval strategies
+- Extended configuration options
+
+### v1.2 (Performance & Polish)
+- Startup time optimization
+- Memory usage reduction
+- Advanced error recovery
+- Integration improvements
+
+### v2.0 (Major Features)
+- Multi-user collaboration
+- Plugin system for custom approval strategies
+- Advanced caching and persistence
+- Performance rewrite

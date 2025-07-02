@@ -1,224 +1,215 @@
-# claif_cla Development Plan - v1.x Stable MVP
+# claif_cla Development Plan - v1.0 MVP Stability Focus
 
-## Overview
+## Executive Summary
 
-`claif_cla` is the Claude provider for Claif, wrapping the `claude-code-sdk` package. The goal for v1.x is to create a stable, reliable MVP that works consistently across all platforms with excellent error handling and testing.
+**Objective**: Create a stable, reliable v1.0 claif_cla provider that wraps claude-code-sdk with 99%+ reliability.
 
-## Current Status (v1.0.12-dev)
+**Current Status**: Working MVP with basic test infrastructure. Need to focus on async correctness, error handling, and cross-platform reliability.
 
-**Core Functionality**: Working claude-code-sdk wrapper ✅
-**Auto-Install**: Automatic SDK installation when missing ✅
-**CLI Interface**: Fire-based with clean output ✅
-**Session Management**: Basic session persistence ✅
-**Test Suite**: Comprehensive pytest structure with mocks ✅
-**Retry Logic**: Enhanced tenacity-based retry with quota detection ✅
-**Error Handling**: Improved quota/rate limit error messages ✅
+**Release Criteria**: 80%+ verified test coverage, fixed async issues, robust session management, clear error handling.
 
-## MVP v1.x Improvement Plan
+## Critical Stability Phase (Blocking v1.0)
 
-### 1. Testing & Reliability (Critical)
+### Test Suite Verification
+**Timeline**: 1 week
+**Priority**: CRITICAL
 
-#### Unit Testing ✅ COMPLETED
-- [x] Add pytest test suite for all modules
-  - [x] Test wrapper.py SDK integration
-  - [x] Test session.py file operations
-  - [x] Test approval.py strategies
-  - [x] Test CLI command parsing
-  - [x] Test install.py functionality
-- [x] Mock claude-code-sdk responses
-- [x] Test error conditions and edge cases
-- [x] Achieve 80%+ code coverage (structure in place)
+- **Verify test coverage accuracy** - Run full pytest suite, confirm 80%+ coverage is real
+- **Fix test environment issues** - Ensure tests pass reliably in clean environments  
+- **Complete mocking** - No external claude-code-sdk dependencies in tests
+- **Test error conditions** - Validate all error handling paths
 
-#### Integration Testing
-- [ ] Test with real claude-code-sdk
-- [ ] Test auto-install flow end-to-end
-- [ ] Test session persistence across runs
-- [ ] Test approval strategies in practice
-- [ ] Cross-platform compatibility tests
+**Success Criteria**: Tests pass reliably, coverage accurate, error paths tested
 
-#### Reliability Improvements
-- [ ] Replace time.sleep with asyncio.sleep
-- [ ] Add proper async context managers
-- [ ] Handle SDK version compatibility
-- [ ] Test with network failures
-- [ ] Verify timeout handling
+### Critical Bug Fixes
+**Timeline**: 1-2 weeks
+**Priority**: CRITICAL
 
-### 2. Error Handling & User Experience
+- **Replace time.sleep with asyncio.sleep** - Fix async correctness throughout
+- **Fix SDK import issues** - Resolve `claude_code` dependency problems
+- **Session file safety** - Prevent corruption, handle concurrent access
+- **Resource cleanup** - No memory leaks or hanging processes
 
-#### Better Error Messages
-- [ ] Add context to SDK errors
-- [ ] Clear API key missing messages
-- [ ] Installation failure guidance
-- [ ] Network error explanations
-- [ ] Rate limit handling
+**Success Criteria**: No blocking calls, SDK imports work, sessions safe, no leaks
 
-#### Graceful Degradation
-- [ ] Handle SDK failures cleanly
-- [ ] Retry transient failures
-- [ ] Fallback for missing features
-- [ ] Clear status reporting
+### Essential Functionality Validation
+**Timeline**: 1 week
+**Priority**: CRITICAL
 
-### 3. Session Management Improvements
+- **Auto-install verification** - Ensure claude-code-sdk installs correctly
+- **Basic operations work** - Query, session management, approval strategies
+- **Error handling completeness** - Clear messages for all failure modes
 
-#### Session Reliability
-- [ ] Atomic file operations
-- [ ] Handle concurrent access
-- [ ] Session corruption recovery
-- [ ] Proper file locking
-- [ ] Session validation
+**Success Criteria**: All basic functionality works reliably
 
-#### Session Features
-- [ ] Session templates
-- [ ] Session search/filter
-- [ ] Session metadata
-- [ ] Session archiving
-- [ ] Import/export formats
+## Release Readiness Phase (Required for v1.0)
 
-### 4. Tool Approval Enhancements
+### Cross-Platform Reliability
+**Timeline**: 2 weeks
+**Priority**: HIGH
 
-#### Strategy Testing
-- [ ] Test all approval strategies
-- [ ] Add strategy composition
-- [ ] Strategy configuration
-- [ ] Logging of decisions
-- [ ] Custom strategy support
+- **Multi-platform testing** - Windows, macOS, Linux compatibility
+- **Path handling robustness** - Spaces, Unicode, special characters
+- **SDK installation paths** - Various installation locations
+- **Permission handling** - Clear error messages for permission issues
 
-#### Safety Features
-- [ ] Risk assessment framework
-- [ ] Approval audit logs
-- [ ] Strategy validation
-- [ ] Default safe strategies
+**Success Criteria**: Verified functionality on all major platforms
 
-### 5. Documentation & Examples
+### Integration Testing
+**Timeline**: 2 weeks
+**Priority**: HIGH
 
-#### User Documentation
-- [ ] Installation guide
-- [ ] Configuration guide
-- [ ] Session management guide
-- [ ] Approval strategies guide
-- [ ] Troubleshooting section
+- **Real SDK testing** - Test with actual claude-code-sdk when available
+- **End-to-end workflows** - Complete user scenarios
+- **Error recovery** - Network failures, timeouts, SDK crashes
+- **Session persistence** - Data survives across runs
 
-#### API Documentation
-- [ ] Complete docstrings
-- [ ] Type hint coverage
-- [ ] Usage examples
-- [ ] Best practices
+**Success Criteria**: Comprehensive integration testing passes
 
-### 6. Performance Optimization
+## Polish Phase (Nice to Have for v1.0)
 
-#### Startup Performance
-- [ ] Profile import times
-- [ ] Lazy SDK loading
-- [ ] Cache initialization
-- [ ] Minimize dependencies
+### Essential Documentation
+**Timeline**: 1 week
+**Priority**: MEDIUM
 
-#### Runtime Performance
-- [ ] Optimize message streaming
-- [ ] Reduce memory usage
-- [ ] Session loading speed
-- [ ] Approval checking speed
+- **Installation guide** - Clear setup with troubleshooting
+- **Basic usage examples** - Common operations and workflows
+- **Session management guide** - Effective session usage
+- **Error troubleshooting** - Solutions for common problems
 
-## Architecture Improvements
-
-### Module Structure
-```
-claif_cla/
-├── __init__.py        # Clean public API
-├── wrapper.py         # Tested SDK wrapper
-├── cli.py            # Robust CLI interface
-├── session.py        # Reliable sessions
-├── approval.py       # Safe approval system
-├── install.py        # Cross-platform installer
-├── types.py          # Well-defined types
-└── utils.py          # Tested utilities
-```
-
-### Key Improvements Needed
-
-#### wrapper.py
-- Add retry logic for SDK calls
-- Better error wrapping
-- Connection pooling
-- Response validation
-
-#### session.py
-- Atomic operations
-- Concurrent access handling
-- Corruption recovery
-- Performance optimization
-
-#### approval.py
-- Strategy validation
-- Performance optimization
-- Better logging
-- Custom strategies
-
-#### cli.py
-- Standardized help/version
-- Better error display
-- Progress indicators
-- Command shortcuts
-
-## Quality Standards
+**Success Criteria**: Users can install and use without confusion
 
 ### Code Quality
-- 100% type hint coverage
-- Google-style docstrings
-- Maximum complexity: 10
-- No nested functions > 2 levels
-- Clear variable names
+**Timeline**: 1 week
+**Priority**: MEDIUM
 
-### Testing Standards
-- Unit tests for all public functions
-- Integration tests for workflows
-- Mock all external dependencies
-- Test all error paths
-- Performance benchmarks
+- **Complete docstrings** - All public functions documented
+- **Type hint coverage** - 100% type annotations
+- **Code organization** - Clean module structure
 
-### Documentation Standards
-- README with quickstart
-- API reference
-- Architecture docs
-- Contributing guide
-- Troubleshooting FAQ
+**Success Criteria**: Professional code quality standards met
 
-## Success Criteria for v1.x
+## Architecture Focus
 
-1.  **Reliability**: 99.9% uptime for basic operations
-2.  **Performance**: < 50ms overhead for SDK calls
-3.  **Testing**: 80%+ test coverage with mocks
-4.  **Error Handling**: Clear, actionable messages
-5.  **Cross-Platform**: Works on all major platforms
-6.  **Documentation**: Complete user and dev docs
-7.  **Sessions**: Reliable persistence and recovery
+### Module Structure (Current)
+```
+claif_cla/
+├── __init__.py        # Clean public API ✅
+├── wrapper.py         # SDK wrapper (needs async fixes)
+├── cli.py            # CLI interface ✅
+├── session.py        # Session management (needs safety)
+├── approval.py       # Approval strategies ✅
+├── install.py        # Cross-platform installer ✅
+├── types.py          # Type definitions ✅
+└── utils.py          # Utilities ✅
+```
 
-## Development Priorities
+### Critical Module Improvements
 
-### Immediate (v1.0.11)
-1.  Fix async/await issues (replace time.sleep)
-2.  Add proper async context managers
-3.  Fix async cleanup in wrapper
-4.  Investigate `claude-code-sdk` and its `claude_code` dependency. The module is not found even when the SDK is installed.
-5.  Add context to SDK errors
-6.  Clear API key missing messages
-7.  Installation failure guidance
+#### wrapper.py (CRITICAL)
+- Fix async/await usage (eliminate time.sleep)
+- Improve SDK error handling and translation
+- Add connection validation and retry logic
+- Ensure proper resource cleanup
 
-### Short-term (v1.1.0)
-1.  Enhanced session management
-2.  Complete documentation
-3.  Performance optimization
+#### session.py (HIGH)
+- Implement atomic file operations for safety
+- Handle concurrent access properly
+- Add session validation and corruption recovery
+- Clear error messages for file issues
 
-### Medium-term (v1.2.0)
-1.  Advanced approval strategies
-2.  Response caching
-3.  Extended CLI commands
+#### approval.py (MEDIUM)
+- Validate strategy configurations
+- Better logging of approval decisions
+- Safe defaults for security
+- Performance optimization
 
-## Non-Goals for v1.x
+## Success Metrics for v1.0
 
--   Complex UI features
--   Database backends
--   Multi-user support
--   Custom SDK modifications
--   Advanced caching
+### Reliability (Must Have)
+- ✅ **99%+ success rate** for claude-code-sdk operations
+- ✅ **No resource leaks** in normal operation
+- ✅ **Graceful error handling** with clear messages
+- ✅ **Stable async operations** - No blocking time.sleep calls
 
-Keep the codebase lean and focused on being a reliable Claude provider for Claif.
+### Testing (Must Have)
+- ✅ **80%+ test coverage** with verified accuracy
+- ✅ **All critical paths tested** including error conditions
+- ✅ **Mocked SDK dependencies** for reliable testing
+- ✅ **Cross-platform compatibility** verified
+
+### User Experience (Should Have)
+- ✅ **Auto-install works reliably** in clean environments
+- ✅ **Clear error messages** for setup and usage problems
+- ✅ **Session management** works predictably
+- ✅ **Fast startup time** (<3 seconds including SDK load)
+
+## Resource Allocation
+
+### Critical Path (80% of effort)
+1. **Async Correctness** (30%) - Fix time.sleep, proper async patterns
+2. **Test Reliability** (25%) - Verify coverage, fix environment issues
+3. **Error Handling** (15%) - Clear messages, edge case handling
+4. **Session Safety** (10%) - Atomic operations, corruption prevention
+
+### Secondary Path (20% of effort)
+1. **Cross-Platform Testing** (10%) - Windows, macOS, Linux verification
+2. **Documentation** (10%) - Installation guides, basic usage
+
+## Risk Management
+
+### High Risk Issues
+1. **SDK dependency problems** → Could break core functionality
+   - **Mitigation**: Comprehensive testing with different SDK versions
+2. **Async/threading bugs** → Could cause hangs or crashes
+   - **Mitigation**: Replace all time.sleep, proper async patterns
+3. **Session corruption** → Could lose user data
+   - **Mitigation**: Atomic file operations, validation, backups
+
+### Medium Risk Issues
+1. **Cross-platform compatibility** → Could limit adoption
+   - **Mitigation**: Test matrix with GitHub Actions
+2. **Error messaging** → Could cause user confusion
+   - **Mitigation**: User testing of error scenarios
+
+## Non-Goals for v1.0
+
+Explicitly excluding to maintain focus:
+
+- ❌ **Advanced session features** (templates, search, archiving)
+- ❌ **Response caching** mechanisms
+- ❌ **Performance optimization** beyond basic functionality
+- ❌ **Complex approval strategies** beyond basic safety
+- ❌ **Multi-user support** or collaboration
+- ❌ **Custom SDK modifications**
+- ❌ **Advanced configuration** systems
+
+## Timeline & Milestones
+
+**Total Estimated Time**: 4-6 weeks
+
+- **Weeks 1-2**: Critical fixes (async, SDK imports, testing)
+- **Weeks 3-4**: Cross-platform testing and integration
+- **Weeks 5-6**: Documentation and polish
+
+**Release Target**: Mid Q1 2025
+
+## Post-v1.0 Roadmap
+
+### v1.1 (Enhanced Features)
+- Advanced session features (templates, search, archiving)
+- Response caching for performance
+- Enhanced approval strategies
+- Extended configuration options
+
+### v1.2 (Performance & Polish)
+- Startup time optimization
+- Memory usage reduction
+- Advanced error recovery
+- Integration improvements
+
+### v2.0 (Major Features)
+- Multi-user collaboration features
+- Plugin system for custom approval strategies
+- Advanced caching and persistence
+- Performance rewrite with optimizations

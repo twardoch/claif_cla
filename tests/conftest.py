@@ -6,46 +6,48 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 # Mock external dependencies BEFORE any imports that might use them
 # This needs to happen at module level, not in fixtures
 
-# Create mock claude_code module
-mock_claude_code = MagicMock()
-mock_claude_client = MagicMock()
-mock_claude_client.query = AsyncMock()
-mock_claude_client.close = AsyncMock()
-mock_claude_code.ClaudeCodeClient = Mock(return_value=mock_claude_client)
-
-# Create mock code_tools
-mock_code_tools = MagicMock()
-mock_code_tools.CodeToolFactory = MagicMock()
-mock_claude_code.code_tools = mock_code_tools
-
-# Create mock message classes
+# Create mock message classes with proper inheritance structure
 class MockMessage:
+    """Base mock message class."""
     pass
 
 class MockUserMessage(MockMessage):
+    """Mock UserMessage class."""
     def __init__(self, content=""):
         self.content = content
 
 class MockAssistantMessage(MockMessage):
+    """Mock AssistantMessage class."""
     def __init__(self, content=None):
         self.content = content or []
 
 class MockSystemMessage(MockMessage):
+    """Mock SystemMessage class."""
     def __init__(self, content=""):
         self.content = content
 
 class MockResultMessage(MockMessage):
+    """Mock ResultMessage class."""
     def __init__(self, content=""):
         self.content = content
 
 class MockClaudeCodeOptions:
+    """Mock ClaudeCodeOptions class."""
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-# Create mock claude_code_sdk
+# Create mock query function
+async def mock_query(prompt: str, options=None):
+    """Mock async query function."""
+    yield MockUserMessage(content=prompt)
+    yield MockAssistantMessage(content=[
+        Mock(text="Mock response from Claude")
+    ])
+
+# Create mock claude_code_sdk module
 mock_sdk = MagicMock()
-mock_sdk.query = AsyncMock()
+mock_sdk.query = mock_query
 mock_sdk.ClaudeCodeOptions = MockClaudeCodeOptions
 mock_sdk.Message = MockMessage
 mock_sdk.UserMessage = MockUserMessage
@@ -53,9 +55,7 @@ mock_sdk.AssistantMessage = MockAssistantMessage
 mock_sdk.SystemMessage = MockSystemMessage
 mock_sdk.ResultMessage = MockResultMessage
 
-# Install the mocks
-sys.modules["claude_code"] = mock_claude_code
-sys.modules["claude_code.code_tools"] = mock_code_tools
+# Install the mock - only mock claude_code_sdk, not claif.common
 sys.modules["claude_code_sdk"] = mock_sdk
 
 # Now we can import other modules
@@ -210,33 +210,4 @@ def mock_config():
         }
     )
 
-@pytest.fixture
-def mock_claif_common():
-    """Mock claif.common if not installed."""
-    import sys
-
-    # Create mock module structure
-    mock_common = MagicMock()
-    mock_common.ClaifOptions = Mock
-    mock_common.Message = Mock
-    mock_common.MessageRole = Mock
-    mock_common.TextBlock = Mock
-    mock_common.ResponseMetrics = Mock
-    mock_common.format_response = Mock(return_value="Formatted response")
-    mock_common.format_metrics = Mock(return_value="Formatted metrics")
-    mock_common.config = MagicMock()
-    mock_common.config.load_config = Mock(return_value=Mock(verbose=False, session_dir="/tmp/sessions"))
-    mock_common.utils = MagicMock()
-    mock_common.utils.prompt_tool_configuration = Mock()
-    mock_common.install = MagicMock()
-
-    # Only mock if not already imported
-    if "claif.common" not in sys.modules:
-        sys.modules["claif"] = MagicMock()
-        sys.modules["claif.common"] = mock_common
-        sys.modules["claif.common.config"] = mock_common.config
-        sys.modules["claif.common.utils"] = mock_common.utils
-        sys.modules["claif.install"] = mock_common.install
-
-
-    # Clean up is handled by the test framework
+# Removed mock_claif_common fixture - using real claif.common module
