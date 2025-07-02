@@ -22,7 +22,7 @@ except ImportError:
 
 
 def _convert_claude_message_to_claif(claude_message: Message) -> ClaifMessage | None:
-    """Convert claude-code-sdk message toClaif message."""
+    """Convert claude-code-sdk message to Claif message."""
     if isinstance(claude_message, UserMessage):
         return ClaifMessage(
             role=MessageRole.USER,
@@ -82,7 +82,7 @@ async def query(
 
     Args:
         prompt: The prompt to send to Claude
-        options: OptionalClaif options
+        options: Optional Claif options
 
     Yields:
         Messages from Claude
@@ -90,7 +90,7 @@ async def query(
     if options is None:
         options = ClaifOptions()
 
-    # ConvertClaif options to Claude options
+    # Convert Claif options to Claude options
     claude_options = ClaudeCodeOptions(
         model=options.model,
         system_prompt=options.system_prompt,

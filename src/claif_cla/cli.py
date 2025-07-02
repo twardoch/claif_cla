@@ -1,4 +1,4 @@
-"""Fire-based CLI forClaif Claude wrapper."""
+"""Fire-based CLI for Claif Claude wrapper."""
 
 import asyncio
 import os
@@ -134,7 +134,7 @@ class ClaudeCLI:
         messages = []
 
         async for claude_msg in query(prompt, options):
-            # Convert Claude message toClaif message
+            # Convert Claude message to Claif message
             msg = Message(
                 role=MessageRole(claude_msg.role),
                 content=claude_msg.content,

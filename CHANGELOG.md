@@ -42,12 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added proper conversion of content blocks to text for assistant messages
 
 ### Changed
-- Improved message type handling with explicit conversion between claude-code-sdk andClaif message formats
+- Improved message type handling with explicit conversion between claude-code-sdk and Claif message formats
 - Enhanced imports to include more specific message types (AssistantMessage, ResultMessage, SystemMessage, UserMessage)
 - Import organization improvements in session.py
 
 ### Fixed
-- Fixed message conversion issues between claude-code-sdk andClaif formats
+- Fixed message conversion issues between claude-code-sdk and Claif formats
 - Proper handling of different message content types and blocks
 
 ## [1.0.7] - 2025-07-01
@@ -92,7 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of claif_cla -Claif provider for Anthropic's Claude Code CLI
-- Thin wrapper around claude-code-sdk for seamlessClaif integration
+- Thin wrapper around claude-code-sdk for seamless Claif integration
 - Fire-based CLI with rich terminal output
 - Advanced session management with persistence, branching, and merging
 - Multiple MCP tool approval strategies (allow-all, deny-all, whitelist, blacklist, patterns, etc.)
@@ -119,6 +119,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - Comprehensive README with installation, usage, and API documentation
-- AGENTS.md withClaif development guidelines
+- AGENTS.md with Claif development guidelines
 - CLAUDE.md with project instructions
 - Inline docstrings for all public APIs
