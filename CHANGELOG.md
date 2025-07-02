@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2025-07-02
+
+### Added
+- **Comprehensive Test Suite**: Implemented pytest-based test infrastructure with 80%+ coverage target
+  - Created `pytest.ini` with test discovery patterns and async support
+  - Created `.coveragerc` with detailed coverage configuration
+  - Added test markers: unit, integration, slow, network, install, session, approval, cli
+  - Implemented comprehensive fixtures in `conftest.py` for mocking external dependencies
+  
+### Testing
+- **Test Files Created**:
+  - `test_init.py` - Tests for main module including message conversion and auto-install
+  - `test_session.py` - Session management tests (Session and SessionManager classes)
+  - `test_approval.py` - MCP tool approval strategy tests (all strategies and factory)
+  - `test_cli.py` - CLI command tests (ask, stream, session, health, benchmark, install)
+  - `test_install.py` - Installation functionality tests
+  - `test_wrapper.py` - Enhanced wrapper tests (caching, retry logic)
+  - `test_package.py` - Package structure and export tests
+
+### Infrastructure
+- **Testing Improvements**:
+  - All external dependencies mocked (claude-code-sdk, claif.common)
+  - Async test patterns for testing async operations
+  - Proper temp directory handling for file-based tests
+  - Mock logger to prevent test output noise
+  - Created `run_tests.py` helper script for easy test execution
+
 ## [1.0.10] - 2025-07-02
 
 ### Added

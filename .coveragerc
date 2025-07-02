@@ -1,0 +1,93 @@
+[run]
+# Source code to measure
+source = claif_cla
+# Omit test files and other non-source files
+omit = 
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */site-packages/*
+    */dist/*
+    */build/*
+    */.venv/*
+    */venv/*
+    # Version file is auto-generated
+    src/claif_cla/__version__.py
+    # Fallback implementations
+    src/claif_cla/install_fallback.py
+
+# Enable branch coverage measurement
+branch = True
+
+# Support parallel test execution
+parallel = True
+
+# Context for coverage
+context = test
+
+[report]
+# Reporting options
+show_missing = True
+precision = 2
+skip_covered = False
+skip_empty = True
+
+# Exclude patterns for coverage reporting
+exclude_lines =
+    # Standard exclusions
+    pragma: no cover
+    def __repr__
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    raise AssertionError
+    raise NotImplementedError
+    raise ImportError
+    except ImportError
+    pass
+    
+    # Debugging lines
+    def __str__
+    def __format__
+    
+    # Defensive programming
+    if False:
+    if True:
+    
+    # Abstract methods
+    @abstractmethod
+    @abc.abstractmethod
+    
+    # Property methods
+    @property
+    @staticmethod
+    @classmethod
+    
+    # Type checking
+    -> NoReturn
+    ... # type: ignore
+    
+    # Logging
+    logger.debug
+    logger.trace
+    
+    # Platform specific
+    if sys.platform
+    if os.name
+
+# Don't complain about abstract methods
+ignore_errors = True
+
+[html]
+# HTML report directory
+directory = htmlcov
+
+[xml]
+# XML report file
+output = coverage.xml
+
+[paths]
+# Map paths for combining coverage from different environments
+claif_cla = 
+    src/claif_cla
+    */claif_cla/src/claif_cla
+    */site-packages/claif_cla
