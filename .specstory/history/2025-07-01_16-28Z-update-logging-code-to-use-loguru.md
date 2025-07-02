@@ -108,7 +108,7 @@ I'm now investigating the potential integration of `loguru`. My initial scan sug
 
 **Considering Logging Simplification**
 
-I'm now wrestling with the user's directive to simplify logging. It seems the codebase relies heavily on `claif.common.get_logger`, which likely interfaces with `loguru` under the hood. While the user's intent is to migrate to direct `loguru` use, replacing the existing method might introduce inconsistencies within theClaif ecosystem. Further investigation into `claif.common`'s logging implementation is underway to ascertain the degree of impact.
+I'm now wrestling with the user's directive to simplify logging. It seems the codebase relies heavily on `claif.common.get_logger`, which likely interfaces with `loguru` under the hood. While the user's intent is to migrate to direct `loguru` use, replacing the existing method might introduce inconsistencies within the Claif ecosystem. Further investigation into `claif.common`'s logging implementation is underway to ascertain the degree of impact.
 
 
 **Refining Implementation Strategy**
@@ -779,7 +779,7 @@ e}")
 src/claif_cla/cli.py:33:56: FBT001 Boolean-typed positional argument in function
  definition
    |
-31 |     """CLAIF Claude CLI with Fire interface."""
+31 |     """Claif Claude CLI with Fire interface."""
 32 |
 33 |     def __init__(self, config_file: str | None = None, verbose: bool = Fals
 e):
@@ -791,7 +791,7 @@ e):
 src/claif_cla/cli.py:33:56: FBT002 Boolean default positional argument in functi
 on definition
    |
-31 |     """CLAIF Claude CLI with Fire interface."""
+31 |     """Claif Claude CLI with Fire interface."""
 32 |
 33 |     def __init__(self, config_file: str | None = None, verbose: bool = Fals
 e):
@@ -1231,7 +1231,7 @@ I've been battling to update `src/claif_cla/approval.py` to your specifications,
 ---
 
 ```diff
-      """CLAIF Claude CLI with Fire interface."""
+      """Claif Claude CLI with Fire interface."""
   
 -     def __init__(self, config_file: str | None = None, verbose: bool = False):
 +     def __init__(self, config_file: str | None = None, *, verbose: bool = False):

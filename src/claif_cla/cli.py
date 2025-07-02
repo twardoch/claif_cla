@@ -51,7 +51,7 @@ def _prompt(message: str) -> str:
 
 
 class ClaudeCLI:
-    """CLAIF Claude CLI with Fire interface."""
+    """Claif Claude CLI with Fire interface."""
 
     def __init__(self, config_file: str | None = None, *, verbose: bool = False):
         """Initialize CLI with optional config file."""

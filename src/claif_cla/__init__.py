@@ -1,4 +1,4 @@
-"""CLAIF Claude wrapper - thin passthrough to claude-code-sdk."""
+"""Claif Claude wrapper - thin passthrough to claude-code-sdk."""
 
 from collections.abc import AsyncIterator
 
