@@ -1,116 +1,217 @@
-# claif_cla Development Plan - Production Ready
+# claif_cla Development Plan - v1.x Stable MVP
 
-## Project Vision
+## Overview
 
-`claif_cla` is a production-ready wrapper around `claude-code-sdk` that integrates seamlessly with the Claif ecosystem. **MVP v1.0 is complete** - the package works reliably with auto-install functionality across all platforms.
+`claif_cla` is the Claude provider for Claif, wrapping the `claude-code-sdk` package. The goal for v1.x is to create a stable, reliable MVP that works consistently across all platforms with excellent error handling and testing.
 
-## Current Status ✅
+## Current Status (v1.0.10)
 
-### MVP Requirements ACHIEVED
-1. **Thin Claude SDK Wrapper** ✅
-   - Async message streaming via claude-code-sdk working
-   - Claif-compatible provider interface implemented
-   - Proper error handling and timeouts in place
-   - Loguru-based logging (no rich dependencies)
+**Core Functionality**: Working claude-code-sdk wrapper ✅
+**Auto-Install**: Automatic SDK installation when missing ✅
+**CLI Interface**: Fire-based with clean output ✅
+**Session Management**: Basic session persistence ✅
 
-2. **Auto-Install Support (Issue #201)** ✅
-   - Detects missing claude-code-sdk installation
-   - Auto-installs via npm when missing
-   - Integrated with bun bundling for offline scenarios
-   - Clear user guidance during installation
+## MVP v1.x Improvement Plan
 
-3. **CLI Interface** ✅
-   - Fire-based CLI with simple output (no rich)
-   - Essential commands working: ask, stream, health
-   - Session management functional
-   - Version information and help available
+### 1. Testing & Reliability (Critical)
 
-4. **Cross-Platform Compatibility** ✅
-   - Verified working on Windows, macOS, Linux
-   - Handles different Node.js installation paths
-   - Robust subprocess management implemented
+#### Unit Testing
+- [ ] Add pytest test suite for all modules
+  - [ ] Test wrapper.py SDK integration
+  - [ ] Test session.py file operations
+  - [ ] Test approval.py strategies
+  - [ ] Test CLI command parsing
+  - [ ] Test install.py functionality
+- [ ] Mock claude-code-sdk responses
+- [ ] Test error conditions and edge cases
+- [ ] Achieve 80%+ code coverage
 
-## Architecture Status ✅
+#### Integration Testing
+- [ ] Test with real claude-code-sdk
+- [ ] Test auto-install flow end-to-end
+- [ ] Test session persistence across runs
+- [ ] Test approval strategies in practice
+- [ ] Cross-platform compatibility tests
 
+#### Reliability Improvements
+- [ ] Replace time.sleep with asyncio.sleep
+- [ ] Add proper async context managers
+- [ ] Handle SDK version compatibility
+- [ ] Test with network failures
+- [ ] Verify timeout handling
+
+### 2. Error Handling & User Experience
+
+#### Better Error Messages
+- [ ] Add context to SDK errors
+- [ ] Clear API key missing messages
+- [ ] Installation failure guidance
+- [ ] Network error explanations
+- [ ] Rate limit handling
+
+#### Graceful Degradation
+- [ ] Handle SDK failures cleanly
+- [ ] Retry transient failures
+- [ ] Fallback for missing features
+- [ ] Clear status reporting
+
+### 3. Session Management Improvements
+
+#### Session Reliability
+- [ ] Atomic file operations
+- [ ] Handle concurrent access
+- [ ] Session corruption recovery
+- [ ] Proper file locking
+- [ ] Session validation
+
+#### Session Features
+- [ ] Session templates
+- [ ] Session search/filter
+- [ ] Session metadata
+- [ ] Session archiving
+- [ ] Import/export formats
+
+### 4. Tool Approval Enhancements
+
+#### Strategy Testing
+- [ ] Test all approval strategies
+- [ ] Add strategy composition
+- [ ] Strategy configuration
+- [ ] Logging of decisions
+- [ ] Custom strategy support
+
+#### Safety Features
+- [ ] Risk assessment framework
+- [ ] Approval audit logs
+- [ ] Strategy validation
+- [ ] Default safe strategies
+
+### 5. Documentation & Examples
+
+#### User Documentation
+- [ ] Installation guide
+- [ ] Configuration guide
+- [ ] Session management guide
+- [ ] Approval strategies guide
+- [ ] Troubleshooting section
+
+#### API Documentation
+- [ ] Complete docstrings
+- [ ] Type hint coverage
+- [ ] Usage examples
+- [ ] Best practices
+
+### 6. Performance Optimization
+
+#### Startup Performance
+- [ ] Profile import times
+- [ ] Lazy SDK loading
+- [ ] Cache initialization
+- [ ] Minimize dependencies
+
+#### Runtime Performance
+- [ ] Optimize message streaming
+- [ ] Reduce memory usage
+- [ ] Session loading speed
+- [ ] Approval checking speed
+
+## Architecture Improvements
+
+### Module Structure
 ```
 claif_cla/
-├── wrapper.py     # Core Claude SDK integration ✅
-├── cli.py         # Fire-based CLI (loguru only) ✅
-├── session.py     # Session management ✅
-├── approval.py    # Tool approval strategies ✅
-└── install.py     # Auto-install functionality ✅
+├── __init__.py        # Clean public API
+├── wrapper.py         # Tested SDK wrapper
+├── cli.py            # Robust CLI interface
+├── session.py        # Reliable sessions
+├── approval.py       # Safe approval system
+├── install.py        # Cross-platform installer
+├── types.py          # Well-defined types
+└── utils.py          # Tested utilities
 ```
 
-## Quality Roadmap (v1.1+)
+### Key Improvements Needed
 
-### Phase 1: Testing & Reliability
-- [ ] **Unit Tests**: Add comprehensive test coverage (80%+ target)
-- [ ] **Integration Tests**: Mock claude-code-sdk responses for reliable testing
-- [ ] **Cross-Platform Tests**: Automated testing on Windows, macOS, Linux
-- [ ] **Error Handling**: Improve edge case handling and error messages
+#### wrapper.py
+- Add retry logic for SDK calls
+- Better error wrapping
+- Connection pooling
+- Response validation
 
-### Phase 2: User Experience Polish
-- [ ] **CLI Improvements**: Standardize `--version`, `--help` across commands
-- [ ] **Error Messages**: Make errors actionable with clear next steps
-- [ ] **Performance**: Optimize startup time and reduce overhead
-- [ ] **Documentation**: Complete API docs and troubleshooting guides
+#### session.py
+- Atomic operations
+- Concurrent access handling
+- Corruption recovery
+- Performance optimization
 
-### Phase 3: Release Automation
-- [ ] **GitHub Actions**: Set up CI/CD pipelines
-- [ ] **PyPI Publishing**: Automated release workflows
-- [ ] **Version Management**: Coordinate with main claif package versions
-- [ ] **Quality Gates**: Ensure all tests pass before releases
+#### approval.py
+- Strategy validation
+- Performance optimization
+- Better logging
+- Custom strategies
 
-## Technical Debt & Improvements
+#### cli.py
+- Standardized help/version
+- Better error display
+- Progress indicators
+- Command shortcuts
+
+## Quality Standards
 
 ### Code Quality
-- [ ] Add async cleanup improvements (replace time.sleep with asyncio.sleep)
-- [ ] Enhance timeout handling for long-running queries
-- [ ] Improve API key validation with better error messages
-- [ ] Add more specific exception types for different failure modes
+- 100% type hint coverage
+- Google-style docstrings
+- Maximum complexity: 10
+- No nested functions > 2 levels
+- Clear variable names
 
-### Testing Priorities
-- [ ] Session management tests with mocked file I/O
-- [ ] Approval strategy tests with various scenarios
-- [ ] CLI command tests with subprocess mocking
-- [ ] Auto-install tests with mocked npm/bun operations
+### Testing Standards
+- Unit tests for all public functions
+- Integration tests for workflows
+- Mock all external dependencies
+- Test all error paths
+- Performance benchmarks
 
-## Success Metrics ACHIEVED ✅
+### Documentation Standards
+- README with quickstart
+- API reference
+- Architecture docs
+- Contributing guide
+- Troubleshooting FAQ
 
-1. **Reliability**: Works out-of-box with `uvx claif_cla` ✅
-2. **Performance**: < 100ms overhead per query ✅
-3. **Usability**: Clear error messages, auto-install works ✅
-4. **Maintainability**: < 1000 lines of code total ✅
-5. **Cross-platform**: Tested on Windows, macOS, Linux ✅
+## Success Criteria for v1.x
 
-## Future Enhancements (v1.2+)
+1. **Reliability**: 99.9% uptime for basic operations
+2. **Performance**: < 50ms overhead for SDK calls
+3. **Testing**: 80%+ test coverage with mocks
+4. **Error Handling**: Clear, actionable messages
+5. **Cross-Platform**: Works on all major platforms
+6. **Documentation**: Complete user and dev docs
+7. **Sessions**: Reliable persistence and recovery
 
-### Advanced Features (Post-MVP)
-- Response caching for improved performance
-- Enhanced session templates and management
-- Advanced retry logic with exponential backoff
-- Connection pooling for multiple queries
-- Extended tool approval strategies
+## Development Priorities
 
-### Non-Goals Maintained
-- Complex UI/rich formatting (keep it simple)
-- Advanced session features beyond basic needs
-- Performance optimizations beyond reasonable limits
-- Extensive configuration options (favor conventions)
+### Immediate (v1.0.11)
+1. Add comprehensive test suite
+2. Fix async/await issues
+3. Improve error messages
 
-## Release Strategy
+### Short-term (v1.1.0)
+1. Enhanced session management
+2. Complete documentation
+3. Performance optimization
 
-- **v1.0**: ✅ MVP with auto-install (COMPLETE)
-- **v1.1**: Quality improvements, testing, documentation
-- **v1.2**: Enhanced features based on user feedback
+### Medium-term (v1.2.0)
+1. Advanced approval strategies
+2. Response caching
+3. Extended CLI commands
 
-## Current Priorities
+## Non-Goals for v1.x
 
-**Immediate Focus for v1.1:**
-1. Add comprehensive unit test coverage
-2. Set up GitHub Actions CI/CD
-3. Complete documentation and troubleshooting guides
-4. Verify and document cross-platform compatibility
-5. Prepare for professional PyPI release
+- Complex UI features
+- Database backends
+- Multi-user support
+- Custom SDK modifications
+- Advanced caching
 
-The foundation is solid and working reliably. Now we focus on quality, testing, and professional polish for confident v1.1 release.
+Keep the codebase lean and focused on being a reliable Claude provider for Claif.
