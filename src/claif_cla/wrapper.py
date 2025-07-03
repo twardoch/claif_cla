@@ -65,8 +65,6 @@ from tenacity import (
     wait_exponential,
 )
 
-from claif_cla import query as base_query
-
 
 class ResponseCache:
     """

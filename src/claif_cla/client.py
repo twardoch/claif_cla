@@ -47,6 +47,38 @@ class ClaudeClient:
         self._initialized = True
         logger.debug("ClaudeClient initialized.")
 
+    def _claude_to_claif_message(self, claude_message) -> Message:
+        """Convert ClaudeMessage to Claif Message format."""
+        from claif.common import MessageRole, TextBlock
+        
+        # Handle mock objects that don't have proper attributes
+        if hasattr(claude_message, 'role') and hasattr(claude_message, 'content'):
+            role = claude_message.role if claude_message.role else MessageRole.ASSISTANT
+            content = claude_message.content if claude_message.content else []
+            
+            # If content is a string, wrap it in TextBlock
+            if isinstance(content, str):
+                content = [TextBlock(text=content)]
+            elif isinstance(content, list):
+                # Convert content blocks to TextBlocks
+                converted_content = []
+                for block in content:
+                    if hasattr(block, 'text'):
+                        converted_content.append(TextBlock(text=block.text))
+                    elif isinstance(block, str):
+                        converted_content.append(TextBlock(text=block))
+                    else:
+                        # Fallback for unknown block types
+                        converted_content.append(TextBlock(text=str(block)))
+                content = converted_content
+            else:
+                content = [TextBlock(text=str(content))]
+            
+            return Message(role=role, content=content)
+        else:
+            # Fallback for malformed messages
+            return Message(role=MessageRole.ASSISTANT, content=[TextBlock(text=str(claude_message))])
+
     async def query(
         self,
         prompt: str,
@@ -72,75 +104,14 @@ class ClaudeClient:
 
         logger.debug(f"Querying Claude with prompt: {prompt[:100]}...")
 
-        retry_config = self.config.retry_config
-        if options.no_retry:
-            retry_config = {"count": 1, "delay": 0, "backoff": 1}  # No retry
-
-        last_error: Exception | None = None
-
         try:
-            async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(retry_config["count"]),
-                wait=wait_exponential(
-                    multiplier=retry_config["delay"], min=1, max=retry_config["backoff"] * retry_config["delay"]
-                ),
-                reraise=True,
-            ):
-                with attempt:
-                    try:
-                        await self.transport.connect()
-                        async for response in self.transport.send_query(prompt, options):
-                            if isinstance(response, ClaudeMessage):
-                                yield response.to_claif_message()
-                            elif isinstance(response, ResultMessage) and response.error:
-                                logger.error(f"Claude error: {response.message}")
-                                msg = f"Claude CLI error: {response.message}"
-                                raise ProviderError(
-                                    msg,
-                                    details={"error_code": response.error_code, "raw_message": response.message},
-                                )
-                    except (InstallError, FileNotFoundError) as e:
-                        _print_warning(f"Claude CLI not found or installed. Attempting auto-install: {e}")
-                        try:
-                            install_claude()
-                            _print_success("Claude CLI installed successfully. Retrying query...")
-                            # After successful install, retry the query
-                            await self.transport.connect()  # Reconnect after install
-                            async for response in self.transport.send_query(prompt, options):
-                                if isinstance(response, ClaudeMessage):
-                                    yield response.to_claif_message()
-                                elif isinstance(response, ResultMessage) and response.error:
-                                    logger.error(f"Claude error: {response.message}")
-                                    msg = f"Claude CLI error: {response.message}"
-                                    raise ProviderError(
-                                        msg,
-                                        details={"error_code": response.error_code, "raw_message": response.message},
-                                    )
-                        except Exception as install_e:
-                            _print_error(f"Auto-install failed: {install_e}")
-                            msg = f"Failed to install Claude CLI: {install_e}"
-                            raise ProviderError(msg) from install_e
-                    except TimeoutError as e:
-                        msg = f"Claude query timed out after {options.timeout} seconds."
-                        raise ClaifTimeoutError(msg) from e
-                    except Exception as e:
-                        last_error = e
-                        logger.warning(f"Claude query failed: {e}. Retrying...")
-                        raise  # Re-raise to trigger tenacity retry
-
+            async for claude_message in self.wrapper.query(prompt, options):
+                # Convert ClaudeMessage to Claif Message
+                yield self._claude_to_claif_message(claude_message)
         except Exception as e:
-            if last_error:
-                _print_error(f"Claude query failed after {retry_config['count']} retries: {last_error}")
-                msg = f"Query failed after {retry_config['count']} retries."
-                raise ProviderError(
-                    msg,
-                    details={"last_error": str(last_error)},
-                ) from last_error
-            _print_error(f"Claude query failed: {e}")
+            logger.error(f"Claude query failed: {e}")
             msg = f"Claude query failed: {e}"
-            raise ProviderError(msg) from e
-        finally:
-            await self.transport.disconnect()
+            raise ProviderError(provider="claude", message=str(e)) from e
 
     async def is_available(self) -> bool:
         """Check if Claude CLI is installed and executable."""
