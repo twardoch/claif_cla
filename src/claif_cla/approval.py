@@ -187,3 +187,136 @@ class Interactive(ApprovalStrategy):
         Returns a description for the Interactive strategy.
         """
         return "Interactive approval" + (" (auto-approve safe)" if self.auto_approve_safe else "")
+
+
+class ConditionalStrategy(ApprovalStrategy):
+    """Approve tools based on conditional logic on tool inputs."""
+
+    def __init__(self, conditions: dict[str, dict[str, Any]]):
+        """
+        Initialize conditional strategy.
+
+        Args:
+            conditions: Tool conditions mapping tool names to parameter constraints.
+                       Format: {"tool_name": {"param": {"max": 10, "allowed": ["value1", "value2"]}}}
+        """
+        self.conditions = conditions
+
+    def should_approve(self, tool_name: str, tool_input: dict[str, Any]) -> bool:
+        """
+        Check if tool approval meets conditions.
+
+        Args:
+            tool_name: Name of the tool.
+            tool_input: Input parameters for the tool.
+
+        Returns:
+            True if all conditions are met or no conditions defined for tool.
+        """
+        if tool_name not in self.conditions:
+            # No conditions defined, allow by default
+            logger.debug(f"ConditionalStrategy: No conditions for {tool_name}, approving")
+            return True
+
+        tool_conditions = self.conditions[tool_name]
+        for param_name, constraints in tool_conditions.items():
+            if param_name not in tool_input:
+                logger.debug(f"ConditionalStrategy: Missing required param {param_name} for {tool_name}")
+                return False
+
+            param_value = tool_input[param_name]
+            
+            # Check allowed values
+            if "allowed" in constraints:
+                if param_value not in constraints["allowed"]:
+                    logger.debug(f"ConditionalStrategy: {param_name}={param_value} not in allowed list for {tool_name}")
+                    return False
+
+            # Check max value
+            if "max" in constraints:
+                try:
+                    if float(param_value) > constraints["max"]:
+                        logger.debug(f"ConditionalStrategy: {param_name}={param_value} exceeds max {constraints['max']} for {tool_name}")
+                        return False
+                except (ValueError, TypeError):
+                    logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to max for {tool_name}")
+                    return False
+
+            # Check min value
+            if "min" in constraints:
+                try:
+                    if float(param_value) < constraints["min"]:
+                        logger.debug(f"ConditionalStrategy: {param_name}={param_value} below min {constraints['min']} for {tool_name}")
+                        return False
+                except (ValueError, TypeError):
+                    logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to min for {tool_name}")
+                    return False
+
+        logger.debug(f"ConditionalStrategy: All conditions met for {tool_name}")
+        return True
+
+    def get_description(self) -> str:
+        """Get description of conditional strategy."""
+        return f"Conditional approval with {len(self.conditions)} tool conditions"
+
+
+def create_approval_strategy(strategy_type: str, config: dict[str, Any] | None = None) -> ApprovalStrategy:
+    """
+    Factory function to create approval strategies.
+
+    Args:
+        strategy_type: Type of strategy to create.
+        config: Configuration parameters for the strategy.
+
+    Returns:
+        Configured approval strategy instance.
+
+    Raises:
+        ValueError: If strategy_type is unknown.
+    """
+    config = config or {}
+
+    match strategy_type:
+        case "allow_all":
+            return AllowAll()
+        
+        case "deny_all":
+            return DenyAll()
+        
+        case "allow_list":
+            allowed_tools = config.get("allowed_tools", [])
+            return AllowList(allowed_tools)
+        
+        case "deny_list":
+            denied_tools = config.get("denied_tools", [])
+            return DenyList(denied_tools)
+        
+        case "pattern":
+            patterns = config.get("patterns", [])
+            deny = config.get("deny", False)
+            return Pattern(patterns, deny=deny)
+        
+        case "interactive":
+            auto_approve_safe = config.get("auto_approve_safe", True)
+            return Interactive(auto_approve_safe=auto_approve_safe)
+        
+        case "conditional":
+            conditions = config.get("conditions", {})
+            return ConditionalStrategy(conditions)
+        
+        case "composite":
+            strategies_config = config.get("strategies", [])
+            require_all = config.get("require_all", False)
+            
+            # Recursively create sub-strategies
+            strategies = []
+            for strategy_config in strategies_config:
+                strategy_type_inner = strategy_config.get("type")
+                strategy_config_inner = strategy_config.get("config", {})
+                if strategy_type_inner:
+                    strategies.append(create_approval_strategy(strategy_type_inner, strategy_config_inner))
+            
+            return Composite(strategies, require_all=require_all)
+        
+        case _:
+            raise ValueError(f"Unknown strategy type: {strategy_type}")
