@@ -26,16 +26,23 @@
 
 ## HIGH PRIORITY (Required for Stable Release)
 
-### Import Errors to Fix (CRITICAL - All tests failing)
-- [ ] **Fix missing create_approval_strategy import** - ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval'
-- [ ] **Fix missing ProviderError import** - ImportError: cannot import name 'ProviderError' from 'claif.common.types'
-- [ ] **Verify all exports in __init__.py** - Ensure all functions being imported actually exist in their modules
+### Import Errors to Fix (CRITICAL - All tests failing) ✅ COMPLETED
+- [x] **Fix missing create_approval_strategy import** - ✅ Implemented complete factory function with all strategy types
+- [x] **Fix missing ProviderError import** - ✅ Fixed import from claif.common.errors instead of .types
+- [x] **Verify all exports in __init__.py** - ✅ All approval strategy functions now properly exported and tested
 
-### Cross-Platform Reliability
-- [ ] **Test on Windows, macOS, Linux** - Verify all functionality works across platforms
+### Cross-Platform Reliability  
+- [x] **CI/CD Infrastructure** - ✅ GitHub Actions workflow with Windows, macOS, Linux matrix added
+- [ ] **Test on Windows, macOS, Linux** - Verify all functionality works across platforms (CI pending)
 - [ ] **Path handling robustness** - Support spaces, Unicode, special characters
 - [ ] **Permission handling** - Proper error messages for permission issues
 - [ ] **SDK installation paths** - Handle various installation locations
+
+### v1.1+ New Priorities
+- [ ] **Fix remaining import issues in claif_cod and claif_gem** - Some providers still have missing utility imports
+- [ ] **Complete monorepo CI integration** - Ensure all packages work together
+- [ ] **Enhanced approval strategy features** - Add more sophisticated condition types
+- [ ] **Documentation for approval strategies** - Complete user guide with examples
 
 ### Integration Testing
 - [ ] **Real SDK testing** - Test with actual claude-code-sdk when available
