@@ -7,7 +7,9 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from claif.common.types import ClaifOptions, Config, ProviderError, TextBlock
+from claif.common.types import ClaifOptions, ProviderError, TextBlock
+from claif.common.errors import ClaifTimeoutError
+from claif.common.config import Config
 from claif.common.errors import ClaifTimeoutError
 from claif.common.errors import ClaifTimeoutError
 from claif.common.errors import ClaifTimeoutError

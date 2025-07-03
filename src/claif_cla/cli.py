@@ -22,7 +22,7 @@ from claif.common import (
 from claif.common.config import load_config
 from loguru import logger
 
-from claif_cla import query
+from claif_cla.client import query
 from claif_cla.session import SessionManager
 
 # from claif_cla.wrapper import ClaudeWrapper
@@ -47,7 +47,7 @@ from claif.common import (
 from claif.common.config import load_config
 from loguru import logger
 
-from claif_cla import query
+from claif_cla.client import query
 from claif_cla.session import SessionManager
 
 # from claif_cla.wrapper import ClaudeWrapper
