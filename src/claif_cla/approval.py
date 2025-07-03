@@ -113,6 +113,32 @@ class Composite(ApprovalStrategy):
         return f"({op.join(descriptions)})"
 
 
+STRATEGY_PRESETS = {
+    "development": {
+        "type": "composite",
+        "config": {
+            "strategies": [
+                {"type": "deny_list", "config": {"denied_tools": ["delete_file", "execute_command"]}},
+                {"type": "pattern", "config": {"patterns": [".*_prod.*"], "deny": True}},
+            ],
+            "require_all": True,
+        },
+    },
+    "production": {
+        "type": "composite",
+        "config": {
+            "strategies": [
+                {"type": "deny_all"},
+                {"type": "allow_list", "config": {"allowed_tools": ["read_file", "list_files"]}},
+                {"type": "conditional", "config": {"conditions": {"read_file": {"path": {"allowed": ["/app/data"]}}}}},
+            ],
+            "require_all": True,
+        },
+    },
+    "testing": {"type": "allow_all"},
+}
+
+
 class Interactive(ApprovalStrategy):
     """Ask user for approval interactively."""
 

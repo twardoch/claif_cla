@@ -2,10 +2,33 @@
 
 import asyncio
 import os
+import asyncio
+import os
 import sys
 import time
+from typing import Any, Dict, List, Optional
 
 import fire
+from claif.common import (
+    ClaifOptions,
+    Message,
+    MessageRole,
+    Provider,
+    ResponseMetrics,
+    TextBlock,
+    format_metrics,
+    format_response,
+)
+from claif.common.config import load_config
+from loguru import logger
+
+from claif_cla import query
+from claif_cla.session import SessionManager
+
+# from claif_cla.wrapper import ClaudeWrapper
+
+
+from claif.common.utils import _print, _print_error, _print_success, _print_warning, _confirm, _prompt
 from claif.common import (
     ClaifOptions,
     Message,
@@ -514,7 +537,7 @@ class ClaudeCLI:
             _print_success("Claude provider installed successfully!")
             _print_success("You can now use the 'claude' command from anywhere.")
             _print("\nTo ensure the 'claude' command is always available, add the installation directory to your system's PATH. For most Unix-like systems, you can add the following line to your shell's profile file (e.g., ~/.bashrc, ~/.zshrc, or ~/.profile):\n")
-            _print(f"  export PATH=\"{result.get("install_dir", "~/.local/bin")}:\$PATH\"")
+            _print(f"  export PATH=\"{result.get("install_dir", "~/.local/bin")}:$PATH\"")
             _print("\nAfter adding, run 'source ~/.bashrc' (or your respective profile file) to apply the changes.")
         else:
             error_msg: str = result.get("message", "Unknown installation error.")
