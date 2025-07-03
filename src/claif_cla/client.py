@@ -13,9 +13,7 @@ from loguru import logger
 from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
 
 from claif_cla.install import install_claude, is_claude_installed
-from claif_cla.transport import ClaudeTransport
-from claif_cla.types import Message as ClaudeMessage
-from claif_cla.types import ResultMessage
+from claif_cla.wrapper import ClaudeWrapper
 
 
 class ClaudeClient:
@@ -45,7 +43,7 @@ class ClaudeClient:
             return
 
         self.config = config
-        self.transport = ClaudeTransport(config)
+        self.wrapper = ClaudeWrapper(config)
         self._initialized = True
         logger.debug("ClaudeClient initialized.")
 
