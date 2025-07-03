@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from claif.common import ClaifOptions, ClaifTimeoutError, Config, ProviderError
+from claif.common.types import ClaifOptions, ClaifTimeoutError, Config, ProviderError, TextBlock
 
 from claif_cla.wrapper import ClaudeWrapper, ResponseCache
 
@@ -200,7 +200,7 @@ class TestClaudeWrapper:
 
         assert len(messages) == 2
         assert messages[0].role == "user"
-        assert messages[1].content == "response"
+        assert len(messages[1].content) == 1 and messages[1].content[0].text == "response"
 
         # Should not call base_query
         wrapper.cache.get.assert_called_once_with("test prompt", options)
@@ -284,7 +284,7 @@ class TestClaudeWrapper:
                 messages.append(msg)
 
         assert len(messages) == 1
-        assert messages[0].content == "success"
+        assert len(messages[0].content) == 1 and messages[0].content[0].text == "success"
         assert call_count == 3
 
     @pytest.mark.asyncio

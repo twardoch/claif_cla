@@ -219,7 +219,7 @@ class TestQuery:
 
             # Verify query succeeded after install
             assert len(messages) == 2
-            assert messages[1].content == "Success after install"
+            assert len(messages[1].content) == 1 and messages[1].content[0].text == "Success after install"
 
     async def test_query_auto_install_failure(self, mock_install_claude):
         """Test error when auto-install fails."""

@@ -85,7 +85,7 @@ class TestSession:
         # Restore to checkpoint
         session.restore_checkpoint(checkpoint)
         assert len(session.messages) == 2
-        assert session.messages[-1].content == "2"
+        assert len(session.messages[-1].content) == 1 and session.messages[-1].content[0].text == "2"
 
     def test_restore_invalid_checkpoint(self):
         """Test restoring to invalid checkpoint raises error."""
@@ -148,7 +148,7 @@ class TestSession:
         assert session.created_at == datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         assert len(session.messages) == 2
         assert session.messages[0].role == MessageRole.USER
-        assert session.messages[0].content == "Hello"
+        assert len(session.messages[0].content) == 1 and session.messages[0].content[0].text == "Hello"
         assert session.metadata == {"key": "value"}
         assert session.checkpoints == [1, 2]
 

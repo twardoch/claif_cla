@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from claif.common import ClaifOptions, ClaifTimeoutError, Config, ProviderError, Provider
+from claif.common.types import ClaifOptions, ClaifTimeoutError, Config, ProviderError, Provider, TextBlock
 from tenacity import RetryError
 
 # Since we're mocking claude_code in conftest.py, we can import this
@@ -326,4 +326,4 @@ class TestClaudeWrapperEdgeCases:
                     
             # Only the valid message should be processed
             assert len(messages) == 1
-            assert messages[0].content == "Valid"
+            assert len(messages[0].content) == 1 and messages[0].content[0].text == "Valid"
