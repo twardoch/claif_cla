@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 from claif_cla.approval import (
-    STRATEGY_PRESETS,
     AllowAll,
     AllowList,
     Composite,
@@ -15,6 +14,7 @@ from claif_cla.approval import (
     Interactive,
     Pattern,
     create_approval_strategy,
+    STRATEGY_PRESETS,
 )
 
 

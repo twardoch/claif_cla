@@ -29,6 +29,11 @@ from claif_cla.session import SessionManager
 
 
 from claif.common.utils import _print, _print_error, _print_success, _print_warning, _confirm, _prompt
+
+
+def main():
+    """Main entry point for Fire CLI."""
+    fire.Fire(ClaudeCLI)
 from claif.common import (
     ClaifOptions,
     Message,

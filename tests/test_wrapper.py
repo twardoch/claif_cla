@@ -7,7 +7,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from claif.common.types import ClaifOptions, ClaifTimeoutError, Config, ProviderError, TextBlock
+from claif.common.types import ClaifOptions, Config, ProviderError, TextBlock
+from claif.common.errors import ClaifTimeoutError
+from claif.common.errors import ClaifTimeoutError
+from claif.common.errors import ClaifTimeoutError
 from claude_code_sdk import Message as ClaudeMessage
 
 from claif_cla.wrapper import ClaudeWrapper, ResponseCache
