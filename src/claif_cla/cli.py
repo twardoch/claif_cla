@@ -32,11 +32,7 @@ def main():
     fire.Fire(ClaudeCLI)
 
 
-
-
 # from claif_cla.wrapper import ClaudeWrapper
-
-
 
 
 class ClaudeCLI:
