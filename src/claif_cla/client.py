@@ -4,7 +4,7 @@ import asyncio
 import sys
 import time
 from collections.abc import AsyncIterator
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Union
 
 from claif.common import ClaifOptions, ClaifTimeoutError, Message, ProviderError
 from claif.common.install import InstallError
@@ -23,7 +23,7 @@ class ClaudeClient:
     Manages the Claude CLI subprocess, handles queries, and processes responses.
     """
 
-    _instance: "ClaudeClient" | None = None
+    _instance: Optional["ClaudeClient"] = None
 
     def __new__(cls, *args: Any, **kwargs: Any) -> "ClaudeClient":
         """Singleton pattern for ClaudeClient."""
@@ -82,7 +82,7 @@ class ClaudeClient:
     async def query(
         self,
         prompt: str,
-        options: ClaifOptions | None = None,
+        options: Optional[ClaifOptions] = None,
     ) -> AsyncIterator[Message]:
         """
         Sends a query to the Claude CLI and yields messages.
@@ -137,8 +137,13 @@ def get_client(config: Any) -> ClaudeClient:
     return _client
 
 
-async def query(prompt: str, options: ClaifOptions | None = None) -> AsyncIterator[Message]:
+async def query(prompt: str, options: Optional[ClaifOptions] = None, config: Any = None) -> AsyncIterator[Message]:
     """Module-level query function to access the singleton client."""
-    client = get_client(options.config)  # Assuming options.config holds the config
+    from claif.common.config import load_config
+    
+    if config is None:
+        config = load_config()
+    
+    client = get_client(config)
     async for msg in client.query(prompt, options):
         yield msg

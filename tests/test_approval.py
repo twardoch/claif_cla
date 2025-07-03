@@ -383,14 +383,14 @@ class TestStrategyPresets:
         assert isinstance(strategy, Composite)
 
         # Should only allow safe read operations
-        assert strategy.should_approve("read_file", {"path": {"allowed": ["/app/data"]}})
+        assert strategy.should_approve("read_file", {"path": "/app/data"})
         assert not strategy.should_approve("write_file", {})
         assert not strategy.should_approve("execute_command", {})
 
     def test_testing_preset(self):
         """Test testing preset configuration."""
         config = STRATEGY_PRESETS["testing"]
-        strategy = create_approval_strategy(config["type"], config["config"])
+        strategy = create_approval_strategy(config["type"], config.get("config", {}))
 
         assert isinstance(strategy, AllowAll)
         assert strategy.should_approve("any_tool", {})
@@ -398,6 +398,6 @@ class TestStrategyPresets:
     def test_all_presets_valid(self):
         """Test that all presets can be created successfully."""
         for _name, config in STRATEGY_PRESETS.items():
-            strategy = create_approval_strategy(config["type"], config["config"])
+            strategy = create_approval_strategy(config["type"], config.get("config", {}))
             assert strategy is not None
             assert hasattr(strategy, "should_approve")

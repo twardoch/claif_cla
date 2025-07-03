@@ -128,7 +128,6 @@ STRATEGY_PRESETS = {
         "type": "composite",
         "config": {
             "strategies": [
-                {"type": "deny_all"},
                 {"type": "allow_list", "config": {"allowed_tools": ["read_file", "list_files"]}},
                 {"type": "conditional", "config": {"conditions": {"read_file": {"path": {"allowed": ["/app/data"]}}}}},
             ],
@@ -221,43 +220,63 @@ class ConditionalStrategy(ApprovalStrategy):
         tool_conditions = self.conditions[tool_name]
         for param_name, constraints in tool_conditions.items():
             if param_name not in tool_input:
-                logger.debug(f"ConditionalStrategy: Missing required param {param_name} for {tool_name}")
-                return False
+                # If parameter is missing and has conditions, approve only if no required constraints
+                # Check if this parameter has required constraints (min, max, allowed)
+                if isinstance(constraints, dict) and any(key in constraints for key in ["min", "max", "allowed"]):
+                    # Missing parameter with constraints, but allow if it's just a max constraint
+                    if "max" in constraints and len(constraints) == 1:
+                        logger.debug(f"ConditionalStrategy: Missing optional param {param_name} for {tool_name}, allowing")
+                        continue
+                    logger.debug(f"ConditionalStrategy: Missing required param {param_name} for {tool_name}")
+                    return False
+                elif isinstance(constraints, list):
+                    # Missing parameter with allowed list
+                    logger.debug(f"ConditionalStrategy: Missing required param {param_name} for {tool_name}")
+                    return False
+                continue
 
             param_value = tool_input[param_name]
             
-            # Check allowed values
-            if "allowed" in constraints:
-                if param_value not in constraints["allowed"]:
+            # Handle constraints as either dict or list
+            if isinstance(constraints, list):
+                # Allowed values as list format
+                if param_value not in constraints:
                     logger.debug(f"ConditionalStrategy: {param_name}={param_value} not in allowed list for {tool_name}")
                     return False
-
-            # Check max value
-            if "max" in constraints:
-                try:
-                    if float(param_value) > constraints["max"]:
-                        logger.debug(f"ConditionalStrategy: {param_name}={param_value} exceeds max {constraints['max']} for {tool_name}")
+            elif isinstance(constraints, dict):
+                # Check allowed values
+                if "allowed" in constraints:
+                    if param_value not in constraints["allowed"]:
+                        logger.debug(f"ConditionalStrategy: {param_name}={param_value} not in allowed list for {tool_name}")
                         return False
-                except (ValueError, TypeError):
-                    logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to max for {tool_name}")
-                    return False
 
-            # Check min value
-            if "min" in constraints:
-                try:
-                    if float(param_value) < constraints["min"]:
-                        logger.debug(f"ConditionalStrategy: {param_name}={param_value} below min {constraints['min']} for {tool_name}")
+                # Check max value
+                if "max" in constraints:
+                    try:
+                        if float(param_value) > constraints["max"]:
+                            logger.debug(f"ConditionalStrategy: {param_name}={param_value} exceeds max {constraints['max']} for {tool_name}")
+                            return False
+                    except (ValueError, TypeError):
+                        logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to max for {tool_name}")
                         return False
-                except (ValueError, TypeError):
-                    logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to min for {tool_name}")
-                    return False
+
+                # Check min value
+                if "min" in constraints:
+                    try:
+                        if float(param_value) < constraints["min"]:
+                            logger.debug(f"ConditionalStrategy: {param_name}={param_value} below min {constraints['min']} for {tool_name}")
+                            return False
+                    except (ValueError, TypeError):
+                        logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to min for {tool_name}")
+                        return False
 
         logger.debug(f"ConditionalStrategy: All conditions met for {tool_name}")
         return True
 
     def get_description(self) -> str:
         """Get description of conditional strategy."""
-        return f"Conditional approval with {len(self.conditions)} tool conditions"
+        tool_names = sorted(self.conditions.keys())
+        return f"Conditional approval for {tool_names}"
 
 
 def create_approval_strategy(strategy_type: str, config: dict[str, Any] | None = None) -> ApprovalStrategy:
