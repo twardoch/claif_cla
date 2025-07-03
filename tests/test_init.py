@@ -52,8 +52,11 @@ class TestClaudeMessageConversion:
         from claif.common import TextBlock
 
         # Mock blocks without text attribute
-        block1 = Mock(spec=[])  # No text attribute
-        block1.configure_mock(**{"__str__.return_value": "Block 1 string"})
+        class MockBlock:
+            def __str__(self):
+                return "Block 1 string"
+        
+        block1 = MockBlock()
 
         claude_msg = AssistantMessage(content=[block1])
         claif_msg = _convert_claude_message_to_claif(claude_msg)
@@ -145,9 +148,9 @@ class TestQuery:
 
             assert len(messages) == 2
             assert messages[0].role == MessageRole.USER
-            assert messages[0].content == "Test prompt"
+            assert messages[0].content[0].text == "Test prompt"
             assert messages[1].role == MessageRole.ASSISTANT
-            assert messages[1].content == "Mock response"
+            assert messages[1].content[0].text == "Mock response"
 
     async def test_query_with_options(self, mock_claude_query, mock_claif_options):
         """Test query with custom options."""

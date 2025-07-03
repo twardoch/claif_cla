@@ -37,13 +37,32 @@ class MockClaudeCodeOptions:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-# Create mock query function
-async def mock_query(prompt: str, options=None):
-    """Mock async query function."""
-    yield MockUserMessage(content=prompt)
-    yield MockAssistantMessage(content=[
-        Mock(text="Mock response from Claude")
-    ])
+# Create mock query function that returns an async iterator
+class MockAsyncIterator:
+    """Mock async iterator for claude_query."""
+    
+    def __init__(self, prompt: str, options=None):
+        self.prompt = prompt
+        self.options = options
+        self.items = [
+            MockUserMessage(content=prompt),
+            MockAssistantMessage(content=[Mock(text="Mock response from Claude")])
+        ]
+        self.index = 0
+    
+    def __aiter__(self):
+        return self
+    
+    async def __anext__(self):
+        if self.index >= len(self.items):
+            raise StopAsyncIteration
+        item = self.items[self.index]
+        self.index += 1
+        return item
+
+def mock_query(prompt: str, options=None):
+    """Mock query function that returns an async iterator."""
+    return MockAsyncIterator(prompt, options)
 
 # Create mock claude_code_sdk module
 mock_sdk = MagicMock()
@@ -55,8 +74,23 @@ mock_sdk.AssistantMessage = MockAssistantMessage
 mock_sdk.SystemMessage = MockSystemMessage
 mock_sdk.ResultMessage = MockResultMessage
 
-# Install the mock - only mock claude_code_sdk, not claif.common
+# Install the mocks - mock both claude_code and claude_code_sdk
 sys.modules["claude_code_sdk"] = mock_sdk
+
+# Create mock claude_code module (used by wrapper.py)
+mock_claude_code = MagicMock()
+mock_claude_client = MagicMock()
+mock_claude_client.query = AsyncMock()
+mock_claude_client.close = AsyncMock()
+mock_claude_code.ClaudeCodeClient = Mock(return_value=mock_claude_client)
+
+# Create mock code_tools
+mock_code_tools = MagicMock()
+mock_code_tools.CodeToolFactory = MagicMock()
+mock_claude_code.code_tools = mock_code_tools
+
+sys.modules["claude_code"] = mock_claude_code
+sys.modules["claude_code.code_tools"] = mock_code_tools
 
 # Now we can import other modules
 import asyncio
@@ -105,7 +139,7 @@ def mock_claif_options() -> ClaifOptions:
 
 
 @pytest.fixture
-def mock_claude_query() -> AsyncMock:
+def mock_claude_query():
     """Mock the claude_query function."""
 
     async def _mock_query(prompt: str, options: Any) -> AsyncIterator[Any]:
@@ -117,7 +151,7 @@ def mock_claude_query() -> AsyncMock:
             ]
         )
 
-    return AsyncMock(side_effect=_mock_query)
+    return _mock_query
 
 
 @pytest.fixture

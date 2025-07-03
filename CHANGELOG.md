@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-02
+## [Unreleased] - 2025-01-03
 
 ### Enhanced
 - **Retry Logic Improvements**: Enhanced existing tenacity retry mechanism for better quota handling
@@ -19,7 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated retry error handling to provide clearer messages for different failure types
 - Enhanced error detection for: "quota", "rate limit", "429", "exhausted"
 
-## [1.0.11] - 2025-07-02
+### To Do
+- Fix async/await usage (replace all time.sleep with asyncio.sleep)
+- Fix SDK import issues related to `claude_code` dependency
+- Improve session file safety with atomic operations
+- Verify test coverage accuracy and achieve 80%+ coverage
+
+## [1.0.11] - 2025-01-02
 
 ### Added
 - **Comprehensive Test Suite**: Implemented pytest-based test infrastructure with 80%+ coverage target
@@ -46,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Mock logger to prevent test output noise
   - Created `run_tests.py` helper script for easy test execution
 
-## [1.0.10] - 2025-07-02
+## [1.0.10] - 2025-01-02
 
 ### Added
 - **Auto-Install Exception Handling**: Added automatic CLI detection and installation when claude-code tools are missing
@@ -69,13 +75,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed all rich imports (rich.console, rich.progress, rich.table, rich.live, rich.syntax)
 - Removed complex UI formatting in favor of simple, clean output
 
-## [1.0.9] - 2025-07-02
+## [1.0.9] - 2025-01-02
 
 ### Changed
 - Enhanced auto-install functionality with better error detection
 - Improved integration with claif core install system
 
-## [1.0.8] - 2025-07-01
+## [1.0.8] - 2025-01-01
 
 ### Added
 - Added reference documentation file (claude-cli-usage.txt)
@@ -91,27 +97,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed message conversion issues between claude-code-sdk and Claif formats
 - Proper handling of different message content types and blocks
 
-## [1.0.7] - 2025-07-01
+## [1.0.7] - 2025-01-01
 
 [Previous version - no changelog entry]
 
-## [1.0.6] - 2025-07-01
+## [1.0.6] - 2025-01-01
 
 [Previous version - no changelog entry]
 
-## [1.0.5] - 2025-07-01
+## [1.0.5] - 2025-01-01
 
 [Previous version - no changelog entry]
 
-## [1.0.4] - 2025-07-01
+## [1.0.4] - 2025-01-01
 
 [Previous version - no changelog entry]
 
-## [1.0.3] - 2025-07-01
+## [1.0.3] - 2025-01-01
 
 [Previous version - no changelog entry]
 
-## [1.0.2] - 2025-07-01
+## [1.0.2] - 2025-01-01
 
 ### Changed
 - Migrated logging from `claif.common.get_logger` to direct `loguru` usage for simplified logging
@@ -132,7 +138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-01-01
 
 ### Added
-- Initial release of claif_cla -Claif provider for Anthropic's Claude Code CLI
+- Initial release of claif_cla - Claif provider for Anthropic's Claude Code CLI
 - Thin wrapper around claude-code-sdk for seamless Claif integration
 - Fire-based CLI with rich terminal output
 - Advanced session management with persistence, branching, and merging

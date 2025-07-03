@@ -25,20 +25,35 @@ from claif_cla.session import SessionManager
 # from claif_cla.wrapper import ClaudeWrapper
 
 
-def _print(message: str) -> None:
-    """Simple print function for output."""
+from rich.console import Console
+from rich.theme import Theme
+from rich.syntax import Syntax
 
+# Define a custom theme for consistent output styling
+cli_theme = Theme({
+    "info": "dim cyan",
+    "warning": "magenta",
+    "danger": "bold red",
+    "success": "bold green",
+    "debug": "dim white"
+})
+console = Console(theme=cli_theme)
+
+def _print(message: str) -> None:
+    """Prints a general message to the console."""
+    console.print(message)
 
 def _print_error(message: str) -> None:
-    """Print error message."""
-
+    """Prints an error message to the console in red."""
+    console.print(f"[danger]Error:[/danger] {message}")
 
 def _print_success(message: str) -> None:
-    """Print success message."""
-
+    """Prints a success message to the console in green."""
+    console.print(f"[success]Success:[/success] {message}")
 
 def _print_warning(message: str) -> None:
-    """Print warning message."""
+    """Prints a warning message to the console in yellow/magenta."""
+    console.print(f"[warning]Warning:[/warning] {message}")
 
 
 def _confirm(message: str) -> bool:
@@ -86,22 +101,27 @@ class ClaudeCLI:
         cache: bool = True,
         no_retry: bool = False,
     ) -> None:
-        """Execute a single query to Claude.
+        """
+        Executes a single query to the Claude LLM and displays the response.
+
+        This method orchestrates the entire query process, including option parsing,
+        asynchronous execution, and result formatting. It also supports session
+        management and caching.
 
         Args:
-            prompt: The prompt to send
-            model: Model to use (e.g., 'claude-3-opus-20240229')
-            temperature: Sampling temperature (0-1)
-            max_tokens: Maximum tokens in response
-            system: System prompt
-            timeout: Timeout in seconds
-            output_format: Output format (text, json, markdown)
-            show_metrics: Show response metrics
-            session: Session ID to use/create
-            cache: Enable response caching
-            no_retry: Disable retry on failure
+            prompt: The textual prompt to send to the Claude model.
+            model: Optional. The specific Claude model to use (e.g., 'claude-3-opus-20240229').
+            temperature: Optional. Controls the randomness of the output (0.0 to 1.0).
+            max_tokens: Optional. Maximum number of tokens in the generated response.
+            system: Optional. A system-level prompt to guide the model's behavior.
+            timeout: Optional. Maximum time in seconds to wait for a response.
+            output_format: The desired format for the output ('text', 'json', or 'markdown').
+            show_metrics: If True, displays performance metrics of the query.
+            session: Optional. The ID of the session to use or create for this conversation.
+            cache: If True, enables response caching for this query.
+            no_retry: If True, disables all retry attempts for the query.
         """
-        options = ClaifOptions(
+        options: ClaifOptions = ClaifOptions(
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -114,47 +134,62 @@ class ClaudeCLI:
             no_retry=no_retry,
         )
 
-        start_time = time.time()
+        start_time: float = time.time()  # Record the start time for metrics calculation.
 
         try:
-            # Run async query
-            messages = asyncio.run(self._ask_async(prompt, options))
+            # Run the asynchronous query and collect all messages.
+            messages: List[Message] = asyncio.run(self._ask_async(prompt, options))
 
-            # Format and display response
+            # Format and display response.
             for message in messages:
-                formatted = format_response(message, output_format)
-                _print(formatted)
+                formatted_output: str = format_response(message, output_format)
+                _print(formatted_output)
 
-            # Show metrics if requested
+            # If requested, calculate and display response metrics.
             if show_metrics:
-                duration = time.time() - start_time
-                metrics = ResponseMetrics(
+                duration: float = time.time() - start_time
+                metrics: ResponseMetrics = ResponseMetrics(
                     duration=duration,
                     provider=Provider.CLAUDE,
-                    model=model or "default",
+                    model=model or "default",  # Use "default" if no specific model was provided.
                 )
                 _print(f"\n{format_metrics(metrics)}")
 
         except Exception as e:
+            # Catch any exceptions during the query process, print an error message,
+            # and exit with a non-zero status code to indicate failure.
             _print_error(str(e))
             if self.config.verbose:
-                logger.exception("Full error details")
+                # If verbose mode is enabled, print the full traceback for debugging.
+                logger.exception("Full error details for Claude query failure:")
             sys.exit(1)
 
-    async def _ask_async(self, prompt: str, options: ClaifOptions) -> list[Message]:
-        """Execute async query and collect messages."""
-        messages = []
-        manager = await self._get_session_manager()
+    async def _ask_async(self, prompt: str, options: ClaifOptions) -> List[Message]:
+        """
+        Asynchronously executes a Claude query and collects all messages.
+
+        This method interacts with the underlying Claude query function and
+        integrates with the session manager to store conversation history.
+
+        Args:
+            prompt: The prompt to send to the Claude model.
+            options: Configuration options for the Claude query, including session ID.
+
+        Returns:
+            A list of `Message` objects received from the Claude API.
+        """
+        messages: List[Message] = []
+        manager: SessionManager = await self._get_session_manager()
 
         async for claude_msg in query(prompt, options):
-            # Convert Claude message to Claif message
-            msg = Message(
+            # Convert the Claude-specific message format to the generic Claif Message format.
+            msg: Message = Message(
                 role=MessageRole(claude_msg.role),
                 content=claude_msg.content,
             )
             messages.append(msg)
 
-            # Save to session if enabled
+            # If a session ID is provided in the options, add the message to the session history.
             if options.session_id:
                 await manager.add_message(options.session_id, msg)
 
@@ -169,19 +204,25 @@ class ClaudeCLI:
         system: str | None = None,
         timeout: int | None = None,
         session: str | None = None,
+        no_retry: bool = False,
     ) -> None:
-        """Stream responses from Claude with live display.
+        """
+        Streams responses from the Claude LLM and displays them live.
+
+        This method is suitable for long-running queries where incremental
+        updates are desired. It also integrates with session management.
 
         Args:
-            prompt: The prompt to send
-            model: Model to use
-            temperature: Sampling temperature (0-1)
-            max_tokens: Maximum tokens in response
-            system: System prompt
-            timeout: Timeout in seconds
-            session: Session ID to use/create
+            prompt: The textual prompt to send to the Claude model.
+            model: Optional. The specific Claude model to use.
+            temperature: Optional. Controls the randomness of the output (0.0 to 1.0).
+            max_tokens: Optional. Maximum number of tokens in the generated response.
+            system: Optional. A system-level prompt to guide the model's behavior.
+            timeout: Optional. Maximum time in seconds to wait for a response.
+            session: Optional. The ID of the session to use or create for this conversation.
+            no_retry: If True, disables all retry attempts for the query.
         """
-        options = ClaifOptions(
+        options: ClaifOptions = ClaifOptions(
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -189,166 +230,235 @@ class ClaudeCLI:
             timeout=timeout,
             session_id=session,
             verbose=self.config.verbose,
+            no_retry=no_retry,
         )
 
         try:
             asyncio.run(self._stream_async(prompt, options))
         except KeyboardInterrupt:
-            _print_warning("Stream interrupted")
+            _print_warning("Stream interrupted by user.")
         except Exception as e:
             _print_error(str(e))
             if self.config.verbose:
-                logger.exception("Full error details")
+                logger.exception("Full error details for Claude stream failure:")
             sys.exit(1)
 
     async def _stream_async(self, prompt: str, options: ClaifOptions) -> None:
-        """Stream responses with live display."""
-        content_buffer = []
-        manager = await self._get_session_manager()
+        """
+        Asynchronously streams responses from the Claude CLI and prints them.
+
+        Args:
+            prompt: The prompt to send to the Claude model.
+            options: Configuration options for the Claude query.
+        """
+        manager: SessionManager = await self._get_session_manager()
 
         async for claude_msg in query(prompt, options):
-            # Collect content for streaming display
-            if isinstance(claude_msg.content, str):
-                content_buffer.append(claude_msg.content)
-                # Print incrementally for streaming effect
-            elif isinstance(claude_msg.content, list):
-                for block in claude_msg.content:
+            # Convert the Claude-specific message format to the generic Claif Message format.
+            msg: Message = Message(
+                role=MessageRole(claude_msg.role),
+                content=claude_msg.content,
+            )
+
+            # Print content for streaming display
+            if isinstance(msg.content, str):
+                _print(msg.content)
+            elif isinstance(msg.content, list):
+                for block in msg.content:
                     if isinstance(block, TextBlock):
-                        content_buffer.append(block.text)
+                        _print(block.text)
+                    # Add handling for other block types if needed for streaming display
 
             # Save to session if enabled
             if options.session_id:
-                msg = Message(
-                    role=MessageRole(claude_msg.role),
-                    content=claude_msg.content,
-                )
                 await manager.add_message(options.session_id, msg)
+            
+            # Add a newline after each message for better readability in stream mode
+            _print("")
 
-    def session(self, action: str = "list", session_id: str | None = None, **kwargs) -> None:
-        """Manage conversation sessions.
+    def session(self, action: str = "list", session_id: str | None = None, **kwargs: Any) -> None:
+        """
+        Manages conversation sessions, allowing users to list, create, delete, show,
+        export, branch, and merge sessions.
 
         Args:
-            action: Action to perform (list, create, delete, show, export,
-                   branch, merge)
-            session_id: Session ID for actions that require it
-            **kwargs: Additional arguments for specific actions
+            action: The action to perform on sessions. Supported actions include:
+                    'list': List all available sessions.
+                    'create': Create a new session. Can specify `session_id` or `template`.
+                    'delete': Delete a session. Requires `session_id`.
+                    'show': Display messages within a session. Requires `session_id`.
+                    'export': Export session messages to a file or stdout. Requires `session_id`.
+                              Can specify `format` (markdown, json) and `output` file path.
+                    'branch': Create a new session from a point in an existing session.
+                              Requires `session_id` and optional `point`.
+                    'merge': Merge two sessions. Requires `session_id` (target) and `other` (source).
+                             Can specify `strategy` (append, interleave).
+            session_id: Optional. The ID of the session to operate on.
+            **kwargs: Additional arguments specific to each action (e.g., `template`, `format`, `output`, `point`, `other`, `strategy`).
         """
         try:
             asyncio.run(self._session_async(action, session_id, **kwargs))
         except Exception as e:
             _print_error(str(e))
             if self.config.verbose:
-                logger.exception("Full error details")
+                logger.exception("Full error details for session command failure:")
             sys.exit(1)
 
-    async def _session_async(self, action: str, session_id: str | None, **kwargs) -> None:
-        """Async implementation for session management."""
-        manager = await self._get_session_manager()
+    async def _session_async(self, action: str, session_id: str | None, **kwargs: Any) -> None:
+        """
+        Asynchronous implementation for session management commands.
+
+        Args:
+            action: The action to perform.
+            session_id: The ID of the session to operate on.
+            **kwargs: Additional arguments for specific actions.
+        """
+        manager: SessionManager = await self._get_session_manager()
 
         if action == "list":
-            sessions = await manager.list_sessions()
+            sessions: List[str] = await manager.list_sessions()
             if not sessions:
-                _print_warning("No sessions found")
+                _print_warning("No sessions found.")
             else:
-                _print("Active Sessions:")
+                _print("\n[bold underline]Active Sessions:[/bold underline]")
                 for sid in sessions:
-                    info = await manager.get_session_info(sid)
-                    count = info.get("message_count", 0)
-                    _print(f"  • {sid}: {count} messages")
+                    info: Dict[str, Any] = await manager.get_session_info(sid)
+                    count: int = info.get("message_count", 0)
+                    _print(f"  • [cyan]{sid}[/cyan]: {count} messages")
 
         elif action == "create":
-            session_id = session_id or await manager.create_session()
-            _print_success(f"Created session: {session_id}")
+            template_name: Optional[str] = kwargs.get("template")
+            try:
+                new_session_id: str = await manager.create_session(session_id, template_name=template_name)
+                _print_success(f"Created session: [cyan]{new_session_id}[/cyan]")
+            except ValueError as e:
+                _print_error(str(e))
 
         elif action == "delete":
             if not session_id:
-                _print_error("Session ID required")
+                _print_error("Session ID is required for 'delete' action.")
                 return
-            if _confirm(f"Delete session {session_id}?"):
+            if _confirm(f"Are you sure you want to delete session [cyan]{session_id}[/cyan]? This action cannot be undone."):
                 await manager.delete_session(session_id)
-                _print_success(f"Deleted session: {session_id}")
+                _print_success(f"Deleted session: [cyan]{session_id}[/cyan]")
+            else:
+                _print("Session deletion cancelled.")
 
         elif action == "show":
             if not session_id:
-                _print_error("Session ID required")
+                _print_error("Session ID is required for 'show' action.")
                 return
-            messages = await manager.get_messages(session_id)
-            for msg in messages:
-                _print(f"{msg.role}:")
-                _print(format_response(msg))
-                _print("")
+            messages: List[Message] = await manager.get_messages(session_id)
+            if not messages:
+                _print_warning(f"Session [cyan]{session_id}[/cyan] has no messages.")
+            else:
+                _print(f"\n[bold underline]Messages for Session [cyan]{session_id}[/cyan]:[/bold underline]")
+                for msg in messages:
+                    _print(f"[bold]{msg.role.value.upper()}:[/bold]")
+                    _print(format_response(msg))
+                    _print("")
 
         elif action == "export":
             if not session_id:
-                _print_error("Session ID required")
+                _print_error("Session ID is required for 'export' action.")
                 return
-            output_format_str = kwargs.get("format", "markdown")
-            output = kwargs.get("output")
-            content = await manager.export_session(session_id, output_format_str)
+            output_format_str: str = kwargs.get("format", "markdown")
+            output_file: Optional[str] = kwargs.get("output")
+            
+            try:
+                content: str = await manager.export_session(session_id, output_format_str)
 
-            if output:
-                with open(output, "w") as f:
-                    f.write(content)
-                _print_success(f"Exported to {output}")
-            else:
-                _print(content)
+                if output_file:
+                    with open(output_file, "w") as f:
+                        f.write(content)
+                    _print_success(f"Session [cyan]{session_id}[/cyan] exported to [green]{output_file}[/green] in {output_format_str} format.")
+                else:
+                    _print(content)
+            except ValueError as e:
+                _print_error(str(e))
 
         elif action == "branch":
             if not session_id:
-                _print_error("Session ID required")
+                _print_error("Session ID is required for 'branch' action.")
                 return
-            point = kwargs.get("point", -1)
-            new_id = await manager.branch_session(session_id, point)
-            _print_success(f"Branched to new session: {new_id}")
+            point: int = int(kwargs.get("point", -1))
+            try:
+                new_id: str = await manager.branch_session(session_id, point)
+                _print_success(f"Branched session [cyan]{session_id}[/cyan] to new session: [cyan]{new_id}[/cyan] at message point {point}.")
+            except ValueError as e:
+                _print_error(str(e))
 
         elif action == "merge":
             if not session_id:
-                _print_error("Session ID required")
+                _print_error("Target session ID is required for 'merge' action.")
                 return
-            other_id = kwargs.get("other")
+            other_id: Optional[str] = kwargs.get("other")
             if not other_id:
-                _print_error("Other session ID required (--other)")
+                _print_error("Source session ID (--other) is required for 'merge' action.")
                 return
-            strategy = kwargs.get("strategy", "append")
-            await manager.merge_sessions(session_id, other_id, strategy)
-            _print_success(f"Merged {other_id} into {session_id}")
+            strategy: str = kwargs.get("strategy", "append")
+            try:
+                await manager.merge_sessions(session_id, other_id, strategy)
+                _print_success(f"Merged session [cyan]{other_id}[/cyan] into [cyan]{session_id}[/cyan] using '{strategy}' strategy.")
+            except ValueError as e:
+                _print_error(str(e))
 
         else:
-            _print_error(f"Unknown action: {action}")
-            actions = "list, create, delete, show, export, branch, merge"
+            _print_error(f"Unknown session action: {action}")
+            actions: str = "list, create, delete, show, export, branch, merge"
             _print(f"Available actions: {actions}")
 
     def health(self) -> None:
-        """Check Claude service health."""
+        """
+        Checks the health and responsiveness of the Claude service.
+
+        This performs a simple query to the Claude CLI to verify that it is
+        properly installed, configured, and able to return a response.
+        """
         try:
-            _print("Checking Claude health...")
+            _print("Checking Claude service health...")
 
-            # Simple health check - try a minimal query
-            result = asyncio.run(self._health_check())
+            # Execute a simple asynchronous health check query.
+            is_healthy: bool = asyncio.run(self._health_check())
 
-            if result:
-                _print_success("Claude service is healthy")
+            if is_healthy:
+                _print_success("Claude service is healthy and responding.")
             else:
-                _print_error("Claude service is not responding")
+                _print_error("Claude service is not responding or health check failed.")
                 sys.exit(1)
 
         except Exception as e:
-            _print_error(f"Health check failed: {e}")
+            _print_error(f"Health check failed due to an unexpected error: {e}")
+            if self.config.verbose:
+                logger.exception("Full error details for health check failure:")
             sys.exit(1)
 
     async def _health_check(self) -> bool:
-        """Perform health check."""
-        try:
-            options = ClaifOptions(max_tokens=10, timeout=10)
-            message_count = 0
+        """
+        Performs the actual asynchronous health check query.
 
+        Sends a minimal query to the Claude CLI with a short timeout.
+
+        Returns:
+            True if a response is received, False otherwise.
+        """
+        try:
+            # Set a short timeout for the health check query.
+            options: ClaifOptions = ClaifOptions(max_tokens=10, timeout=10)
+            message_count: int = 0
+
+            # Iterate through messages from a simple query. If any message is received,
+            # the service is considered healthy.
             async for _ in query("Hello", options):
                 message_count += 1
+                # If at least one message is received, consider it a success and return.
                 if message_count > 0:
                     return True
 
+            # If the loop completes without receiving any messages, return False.
             return message_count > 0
         except Exception:
+            # Catch any exceptions during the health check and return False, indicating failure.
             return False
 
     def benchmark(
@@ -356,181 +466,232 @@ class ClaudeCLI:
         prompt: str = "What is 2+2?",
         iterations: int = 5,
         model: str | None = None,
+        no_retry: bool = False,
     ) -> None:
-        """Benchmark Claude performance.
+        """
+        Benchmarks Claude performance by running a query multiple times.
 
         Args:
-            prompt: Prompt to use for benchmarking
-            iterations: Number of iterations
-            model: Model to benchmark
+            prompt: The prompt to use for benchmarking.
+            iterations: The number of times to run the query. Defaults to 5.
+            model: Optional. The specific Claude model to benchmark.
+            no_retry: If True, disables retry attempts during benchmarking.
         """
-        _print("Benchmarking Claude")
-        _print(f"Prompt: {prompt}")
-        _print(f"Iterations: {iterations}")
-        _print(f"Model: {model or 'default'}")
+        _print("\n[bold underline]Benchmarking Claude Performance[/bold underline]")
+        _print(f"Prompt: [cyan]{prompt}[/cyan]")
+        _print(f"Iterations: [cyan]{iterations}[/cyan]")
+        _print(f"Model: [cyan]{model or 'default'}[/cyan]")
         _print("")
 
-        times = []
-        options = ClaifOptions(model=model, cache=False)
+        times: List[float] = []
+        options: ClaifOptions = ClaifOptions(model=model, cache=False, no_retry=no_retry)
 
         for i in range(iterations):
-            _print(f"Running iteration {i + 1}/{iterations}...")
-            start = time.time()
+            _print(f"Running iteration [yellow]{i + 1}/{iterations}[/yellow]...")
+            start_time: float = time.time()
             try:
                 asyncio.run(self._benchmark_iteration(prompt, options))
-                duration = time.time() - start
+                duration: float = time.time() - start_time
                 times.append(duration)
-                _print(f"  Completed in {duration:.3f}s")
+                _print(f"  Completed in [green]{duration:.3f}s[/green]")
             except Exception as e:
-                _print_error(f"Iteration {i + 1} failed: {e}")
+                _print_error(f"Iteration [red]{i + 1}[/red] failed: {e}")
 
         if times:
-            avg_time = sum(times) / len(times)
-            min_time = min(times)
-            max_time = max(times)
+            avg_time: float = sum(times) / len(times)
+            min_time: float = min(times)
+            max_time: float = max(times)
 
-            _print("\nResults:")
-            _print(f"Average: {avg_time:.3f}s")
-            _print(f"Min: {min_time:.3f}s")
-            _print(f"Max: {max_time:.3f}s")
+            _print("\n[bold underline]Benchmark Results:[/bold underline]")
+            _print(f"Average time: [green]{avg_time:.3f}s[/green]")
+            _print(f"Min time: [green]{min_time:.3f}s[/green]")
+            _print(f"Max time: [green]{max_time:.3f}s[/green]")
         else:
-            _print_error("No successful iterations")
+            _print_error("No successful iterations to report benchmark results.")
 
     async def _benchmark_iteration(self, prompt: str, options: ClaifOptions) -> None:
-        """Run a single benchmark iteration."""
-        message_count = 0
+        """
+        Runs a single iteration of the benchmark query.
+
+        Args:
+            prompt: The prompt for the current iteration.
+            options: The `ClaifOptions` for the current iteration.
+
+        Raises:
+            Exception: If no response is received from the query.
+        """
+        message_count: int = 0
         async for _ in query(prompt, options):
             message_count += 1
         if message_count == 0:
-            msg = "No response received"
+            msg = "No response received from Claude during benchmark iteration."
+            logger.error(msg)
             raise Exception(msg)
 
     def install(self) -> None:
-        """Install Claude provider (npm package + bundling + installation).
+        """
+        Installs the Claude provider, including its npm package and bundling.
 
-        This will:
-        1. Install bun if not available
-        2. Install the latest @anthropic-ai/claude-code package
-        3. Bundle it into a standalone executable
-        4. Install the executable to ~/.local/bin (or equivalent)
+        This method performs the following steps:
+        1. Ensures 'bun' is installed, as it's required for bundling.
+        2. Installs the latest `@anthropic-ai/claude-code` npm package globally.
+        3. Bundles the installed package into a standalone executable.
+        4. Installs the executable to a well-known local binary directory (e.g., `~/.local/bin`).
+
+        Upon successful installation, it provides instructions on how to add the
+        installation directory to the system's PATH for easy access.
+
+        Raises:
+            SystemExit: If the installation fails at any step.
         """
         from claif_cla.install import install_claude
 
-        _print("Installing Claude provider...")
-        result = install_claude()
+        _print("Attempting to install Claude provider...")
+        result: Dict[str, Any] = install_claude()
 
-        if result["installed"]:
+        if result.get("installed"):
             _print_success("Claude provider installed successfully!")
-            _print_success("You can now use the 'claude' command from anywhere")
+            _print_success("You can now use the 'claude' command from anywhere.")
+            _print("\nTo ensure the 'claude' command is always available, add the installation directory to your system's PATH. For most Unix-like systems, you can add the following line to your shell's profile file (e.g., ~/.bashrc, ~/.zshrc, or ~/.profile):\n")
+            _print(f"  export PATH=\"{result.get("install_dir", "~/.local/bin")}:\$PATH\"")
+            _print("\nAfter adding, run 'source ~/.bashrc' (or your respective profile file) to apply the changes.")
         else:
-            error_msg = result.get("message", "Unknown error")
+            error_msg: str = result.get("message", "Unknown installation error.")
             _print_error(f"Failed to install Claude provider: {error_msg}")
             if result.get("failed"):
-                failed_str = ", ".join(result["failed"])
-                _print_error(f"Failed components: {failed_str}")
+                failed_components: str = ", ".join(result["failed"])
+                _print_error(f"Failed components: {failed_components}")
             sys.exit(1)
 
     def uninstall(self) -> None:
-        """Uninstall Claude provider (remove bundled executable).
+        """
+        Uninstalls the Claude provider by removing its bundled executable and associated directory.
 
-        This will remove the bundled Claude executable from the install
-        directory.
+        This method attempts to remove the Claude CLI executable from the
+        installation directory. It also removes the `claude-bin` directory
+        where the actual executable resides.
+
+        Raises:
+            SystemExit: If the uninstallation fails.
         """
         from claif_cla.install import uninstall_claude
 
-        _print("Uninstalling Claude provider...")
-        result = uninstall_claude()
+        _print("Attempting to uninstall Claude provider...")
+        result: Dict[str, Any] = uninstall_claude()
 
-        if result["uninstalled"]:
+        if result.get("uninstalled"):
             _print_success("Claude provider uninstalled successfully!")
         else:
-            error_msg = result.get("message", "Unknown error")
+            error_msg: str = result.get("message", "Unknown uninstallation error.")
             _print_error(f"Failed to uninstall Claude provider: {error_msg}")
             if result.get("failed"):
-                failed_str = ", ".join(result["failed"])
-                _print_error(f"Failed components: {failed_str}")
+                failed_components: str = ", ".join(result["failed"])
+                _print_error(f"Failed components: {failed_components}")
             sys.exit(1)
 
     def status(self) -> None:
-        """Show Claude provider installation status."""
+        """
+        Displays the installation status of the Claude provider.
+
+        This method checks for the presence of the main 'claude' wrapper script,
+        the 'claude-bin' installation directory, and verifies if the installation
+        directory is included in the system's PATH.
+        """
         import shutil
+        from claif.common.install import find_executable, get_install_location
+        from claif_cla.install import get_claude_status
 
-        from claif_cla.install import get_claude_status, get_install_location
+        _print("\n[bold underline]Claude Provider Status[/bold underline]")
 
-        _print("Claude Provider Status")
-        _print("")
+        # Get installation status from claif_cla.install
+        status_info: Dict[str, Any] = get_claude_status()
+        install_dir: Path = get_install_location()
 
-        # Get installation status
-        status = get_claude_status()
-        install_dir = get_install_location()
-
-        if status["installed"]:
-            path_info = f"{status['path']} ({status['type']})"
-            _print_success(f"Installed: {path_info}")
+        if status_info.get("installed"):
+            path_info: str = f"{status_info['path']} ({status_info['type']})"
+            _print_success(f"Installed: [green]{path_info}[/green]")
         else:
-            _print_warning("Not installed")
+            _print_warning("Not installed: [yellow]Claude CLI not found in expected locations.[/yellow]")
 
-        # Check if command is available in PATH
+        # Check if 'claude' command is available in system PATH
         try:
             if shutil.which("claude"):
-                _print_success("'claude' command available in PATH")
+                _print_success("'claude' command available in system PATH.")
             else:
-                _print_warning("'claude' command not in PATH")
-        except Exception:
-            _print_error("Error checking command availability")
+                _print_warning("'claude' command not found in system PATH. You might need to add it manually.")
+        except Exception as e:
+            _print_error(f"Error checking 'claude' command availability: {e}")
 
         # Show install directory in PATH status
-        path_env = os.environ.get("PATH", "")
+        path_env: str = os.environ.get("PATH", "")
         if str(install_dir) in path_env:
-            _print_success("Install directory in PATH")
+            _print_success("Installation directory is in system PATH.")
         else:
-            _print_warning(f"Install directory not in PATH: {install_dir}")
-            path_cmd = 'export PATH="$HOME/.local/bin:$PATH"'
-            _print(f"  Add to PATH with: {path_cmd}")
+            _print_warning(f"Installation directory [yellow]{install_dir}[/yellow] is NOT in system PATH.")
+            path_cmd: str = f'export PATH="{install_dir}:$PATH"'
+            _print(f"  To add it, run: [cyan]{path_cmd}[/cyan]")
+            _print("  (Remember to source your shell's profile file afterwards, e.g., ~/.bashrc or ~/.zshrc)")
 
-        _print("\nHelpful Commands:")
-        _print("  claif_cla install - Install Claude provider")
-        _print("  claif_cla uninstall - Uninstall Claude provider")
-        _print("  claif_cla health - Check Claude service health")
+        _print("\n[bold underline]Helpful Commands:[/bold underline]")
+        _print("  [cyan]claif_cla install[/cyan] - Install Claude provider")
+        _print("  [cyan]claif_cla uninstall[/cyan] - Uninstall Claude provider")
+        _print("  [cyan]claif_cla health[/cyan] - Check Claude service health")
 
     def interactive(self, session: str | None = None) -> None:
-        """Start an interactive session with Claude.
+        """
+        Starts an interactive conversational session with Claude.
+
+        Users can type prompts, and the CLI will send them to Claude,
+        displaying responses in real-time. Session history is maintained.
+        Special commands (prefixed with '/') allow session management.
 
         Args:
-            session: Session ID to use/create
+            session: Optional. The ID of an existing session to resume, or a new
+                     session will be created if not provided.
         """
         try:
             asyncio.run(self._interactive_async(session))
         except KeyboardInterrupt:
-            _print_warning("\nExiting interactive session.")
+            _print_warning("\nExiting interactive session. Type 'exit' or 'quit' to end gracefully.")
         except Exception as e:
             _print_error(str(e))
+            if self.config.verbose:
+                logger.exception("Full error details for interactive session failure:")
 
     async def _interactive_async(self, session_id: str | None) -> None:
-        """Async implementation for interactive session."""
-        manager = await self._get_session_manager()
+        """
+        Asynchronous implementation for the interactive session.
+
+        Handles user input, sends queries to Claude, displays responses,
+        and processes special commands.
+
+        Args:
+            session_id: The ID of the session to use or create.
+        """
+        manager: SessionManager = await self._get_session_manager()
         if session_id is None:
             session_id = await manager.create_session()
 
-        _print("Interactive Claude Session")
-        _print(f"Session ID: {session_id}")
-        _print("Type 'exit' or 'quit' to end session")
-        _print("Type '/help' for commands")
+        _print("\n[bold underline]Interactive Claude Session[/bold underline]")
+        _print(f"Session ID: [cyan]{session_id}[/cyan]")
+        _print("Type 'exit' or 'quit' to end session.")
+        _print("Type '/help' for a list of commands.")
         _print("")
 
         while True:
             try:
-                prompt = _prompt("You")
+                prompt: str = _prompt("You")
 
                 if prompt.lower() in ("exit", "quit"):
+                    _print("Ending interactive session.")
                     break
 
                 if prompt.startswith("/"):
                     await self._handle_command(prompt, session_id)
                     continue
 
-                _print("\nClaude:")
-                options = ClaifOptions(session_id=session_id, verbose=self.config.verbose)
+                _print("\n[bold]Claude:[/bold]")
+                options: ClaifOptions = ClaifOptions(session_id=session_id, verbose=self.config.verbose)
                 await self._stream_async(prompt, options)
                 _print("")
 
@@ -538,52 +699,98 @@ class ClaudeCLI:
                 _print_warning("\nUse 'exit' or 'quit' to end session. Press Ctrl+C again to force exit.")
             except Exception as e:
                 _print_error(str(e))
+                if self.config.verbose:
+                    logger.exception("Error during interactive session:")
 
     async def _handle_command(self, command: str, session_id: str) -> None:
-        """Handle interactive session commands."""
-        parts = command.split()
-        cmd = parts[0].lower()
-        manager = await self._get_session_manager()
+        """
+        Handles special commands entered during an interactive session.
+
+        Args:
+            command: The command string (e.g., '/help', '/clear').
+            session_id: The ID of the current session.
+        """
+        parts: List[str] = command.split(maxsplit=1)
+        cmd: str = parts[0].lower()
+        args: str = parts[1] if len(parts) > 1 else ""
+        manager: SessionManager = await self._get_session_manager()
 
         if cmd == "/help":
-            _print("Commands:")
-            _print("  /help - Show this help")
-            _print("  /clear - Clear screen")
-            _print("  /save - Save session")
-            _print("  /history - Show session history")
-            _print("  /model <name> - Change model")
-            _print("  /system <prompt> - Set system prompt")
+            _print("\n[bold underline]Interactive Session Commands:[/bold underline]")
+            _print("  [cyan]/help[/cyan] - Show this help message.")
+            _print("  [cyan]/clear[/cyan] - Clear the terminal screen.")
+            _print("  [cyan]/save[/cyan] - Save the current session to disk.")
+            _print("  [cyan]/history[/cyan] - Show the full message history of the current session.")
+            _print("  [cyan]/model <name>[/cyan] - Change the model for the current session (e.g., /model claude-3-opus-20240229). (Not yet fully implemented)")
+            _print("  [cyan]/system <prompt>[/cyan] - Set a new system prompt for the current session. (Not yet fully implemented)")
+            _print("  [cyan]/branch [point][/cyan] - Create a new session branched from the current one at a specific message point.")
+            _print("  [cyan]/merge <other_session_id> [strategy][/cyan] - Merge another session into the current one.")
 
         elif cmd == "/clear":
-            os.system("clear" if os.name != "nt" else "cls")
+            os.system("cls" if os.name == "nt" else "clear")
 
         elif cmd == "/save":
-            await manager.save_session(session_id)
-            _print_success("Session saved")
+            try:
+                await manager.save_session(session_id)
+                _print_success(f"Session [cyan]{session_id}[/cyan] saved successfully.")
+            except ValueError as e:
+                _print_error(str(e))
 
         elif cmd == "/history":
-            messages = await manager.get_messages(session_id)
-            for msg in messages:
-                _print(f"{msg.role}: {msg.content}")
+            messages: List[Message] = await manager.get_messages(session_id)
+            if not messages:
+                _print_warning(f"Session [cyan]{session_id}[/cyan] has no history.")
+            else:
+                _print(f"\n[bold underline]Session History for [cyan]{session_id}[/cyan]:[/bold underline]")
+                for msg in messages:
+                    _print(f"[bold]{msg.role.value.upper()}: {msg.content}[/bold]")
+                    _print("")
 
         elif cmd == "/model":
-            if len(parts) > 1:
-                # TODO: Implement model switching
-                _print_warning("Model switching not yet implemented")
+            if args:
+                # TODO: Implement actual model switching logic within the session manager or options.
+                _print_warning(f"Model switching to '{args}' not yet fully implemented. This will only affect the current query options.")
+                # Example of how you might update options for subsequent queries:
+                # self.config.set_provider_option(Provider.CLAUDE, "model", args)
             else:
-                _print_error("Model name required")
+                _print_error("Model name required. Usage: /model <name>")
 
         elif cmd == "/system":
-            if len(parts) > 1:
-                # TODO: Implement system prompt setting
-                _print_warning("System prompt setting not yet implemented")
+            if args:
+                # TODO: Implement actual system prompt setting logic within the session manager or options.
+                _print_warning(f"Setting system prompt to '{args}' not yet fully implemented. This will only affect the current query options.")
+                # Example of how you might update options for subsequent queries:
+                # self.config.set_provider_option(Provider.CLAUDE, "system_prompt", args)
             else:
-                _print_error("System prompt required")
+                _print_error("System prompt required. Usage: /system <prompt>")
+
+        elif cmd == "/branch":
+            try:
+                point: int = int(args) if args else -1
+                new_session_id: str = await manager.branch_session(session_id, point)
+                _print_success(f"Branched to new session: [cyan]{new_session_id}[/cyan] at message point {point}.")
+            except ValueError as e:
+                _print_error(f"Invalid branch point: {e}. Usage: /branch [point]")
+            except Exception as e:
+                _print_error(f"Failed to branch session: {e}")
+
+        elif cmd == "/merge":
+            args_parts = args.split(maxsplit=1)
+            if len(args_parts) < 1:
+                _print_error("Source session ID required. Usage: /merge <other_session_id> [strategy]")
+                return
+            
+            other_session_id: str = args_parts[0]
+            strategy: str = args_parts[1] if len(args_parts) > 1 else "append"
+
+            try:
+                await manager.merge_sessions(session_id, other_session_id, strategy)
+                _print_success(f"Merged session [cyan]{other_session_id}[/cyan] into [cyan]{session_id}[/cyan] using '{strategy}' strategy.")
+            except ValueError as e:
+                _print_error(f"Merge failed: {e}. Usage: /merge <other_session_id> [strategy]")
+            except Exception as e:
+                _print_error(f"Failed to merge sessions: {e}")
 
         else:
-            _print_error(f"Unknown command: {cmd}")
-
-
-def main():
-    """Main CLI entry point."""
-    fire.Fire(ClaudeCLI)
+            _print_error(f"Unknown command: [red]{cmd}[/red]")
+            _print("Type '/help' for available commands.")
