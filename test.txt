@@ -1,0 +1,116 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-8.4.1, pluggy-1.6.0 -- /Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/.venv/bin/python3
+cachedir: .pytest_cache
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla
+configfile: pytest.ini
+plugins: anyio-4.9.0, xdist-3.8.0, rerunfailures-14.0, cov-6.2.1, mock-3.14.1, benchmark-5.1.0, asyncio-1.0.0
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 25 items / 8 errors
+
+==================================== ERRORS ====================================
+___________________ ERROR collecting tests/test_approval.py ____________________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_approval.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_approval.py:7: in <module>
+    from claif_cla.approval import (
+src/claif_cla/__init__.py:1: in <module>
+    from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
+E   ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/src/claif_cla/approval.py)
+______________________ ERROR collecting tests/test_cli.py ______________________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_cli.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_cli.py:13: in <module>
+    from claif_cla.cli import ClaudeCLI, main
+src/claif_cla/__init__.py:1: in <module>
+    from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
+E   ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/src/claif_cla/approval.py)
+_______________ ERROR collecting tests/test_cli_comprehensive.py _______________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_cli_comprehensive.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_cli_comprehensive.py:11: in <module>
+    from claif_cla.cli import ClaudeCLI, main
+src/claif_cla/__init__.py:1: in <module>
+    from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
+E   ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/src/claif_cla/approval.py)
+____________________ ERROR collecting tests/test_install.py ____________________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_install.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_install.py:9: in <module>
+    from claif_cla.install import (
+src/claif_cla/__init__.py:1: in <module>
+    from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
+E   ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/src/claif_cla/approval.py)
+____________________ ERROR collecting tests/test_package.py ____________________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_package.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_package.py:5: in <module>
+    import claif_cla
+src/claif_cla/__init__.py:1: in <module>
+    from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
+E   ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/src/claif_cla/approval.py)
+____________________ ERROR collecting tests/test_session.py ____________________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_session.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_session.py:11: in <module>
+    from claif_cla.session import Session, SessionManager
+src/claif_cla/__init__.py:1: in <module>
+    from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
+E   ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/src/claif_cla/approval.py)
+____________________ ERROR collecting tests/test_wrapper.py ____________________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_wrapper.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_wrapper.py:12: in <module>
+    from claif.common.types import ClaifOptions, ProviderError, TextBlock
+E   ImportError: cannot import name 'ProviderError' from 'claif.common.types' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif/src/claif/common/types.py)
+_____________ ERROR collecting tests/test_wrapper_comprehensive.py _____________
+ImportError while importing test module '/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/tests/test_wrapper_comprehensive.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_wrapper_comprehensive.py:15: in <module>
+    from claif_cla.wrapper import ClaudeWrapper, ResponseCache
+src/claif_cla/__init__.py:1: in <module>
+    from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
+E   ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval' (/Users/adam/Developer/vcs/github.twardoch/pub/claif-packages/claif_cla/src/claif_cla/approval.py)
+=========================== short test summary info ============================
+ERROR tests/test_approval.py
+ERROR tests/test_cli.py
+ERROR tests/test_cli_comprehensive.py
+ERROR tests/test_install.py
+ERROR tests/test_package.py
+ERROR tests/test_session.py
+ERROR tests/test_wrapper.py
+ERROR tests/test_wrapper_comprehensive.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 8 errors during collection !!!!!!!!!!!!!!!!!!!!
+============================== 8 errors in 0.31s ===============================

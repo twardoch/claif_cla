@@ -26,6 +26,11 @@
 
 ## HIGH PRIORITY (Required for Stable Release)
 
+### Import Errors to Fix (CRITICAL - All tests failing)
+- [ ] **Fix missing create_approval_strategy import** - ImportError: cannot import name 'create_approval_strategy' from 'claif_cla.approval'
+- [ ] **Fix missing ProviderError import** - ImportError: cannot import name 'ProviderError' from 'claif.common.types'
+- [ ] **Verify all exports in __init__.py** - Ensure all functions being imported actually exist in their modules
+
 ### Cross-Platform Reliability
 - [ ] **Test on Windows, macOS, Linux** - Verify all functionality works across platforms
 - [ ] **Path handling robustness** - Support spaces, Unicode, special characters
