@@ -14,10 +14,48 @@ from claif.common import (
     Config,
     ProviderError,
 )
-from claude_code import ClaudeCodeClient
-from claude_code.code_tools import CodeToolFactory
-from claude_code_sdk import Message as ClaudeMessage
 from loguru import logger
+
+# Handle claude_code imports with fallback for development
+try:
+    from claude_code import ClaudeCodeClient
+    from claude_code.code_tools import CodeToolFactory
+    from claude_code_sdk import Message as ClaudeMessage
+    from claude_code_sdk import TextBlock as ClaudeTextBlock
+    from claude_code_sdk import ToolUseBlock as ClaudeToolUseBlock
+    from claude_code_sdk import ToolResultBlock as ClaudeToolResultBlock
+    CLAUDE_CODE_AVAILABLE = True
+except ImportError:
+    # Create mock classes for development when claude_code is not available
+    logger.warning("claude_code packages not available, using mock classes for development")
+
+    class MockClaudeCodeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class MockCodeToolFactory:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class MockClaudeMessage:
+        def __init__(self, role=None, content=None):
+            self.role = role
+            self.content = content
+
+    class MockClaudeBlock:
+        def __init__(self, type=None, text=None, **kwargs):
+            self.type = type
+            self.text = text
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    ClaudeCodeClient = MockClaudeCodeClient
+    CodeToolFactory = MockCodeToolFactory
+    ClaudeMessage = MockClaudeMessage
+    ClaudeTextBlock = MockClaudeBlock
+    ClaudeToolUseBlock = MockClaudeBlock
+    ClaudeToolResultBlock = MockClaudeBlock
+    CLAUDE_CODE_AVAILABLE = False
 from tenacity import (
     AsyncRetrying,
     RetryError,

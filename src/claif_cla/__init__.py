@@ -4,16 +4,51 @@ from collections.abc import AsyncIterator
 
 from claif.common import ClaifOptions, MessageRole
 from claif.common import Message as ClaifMessage
-from claude_code_sdk import (
-    AssistantMessage,
-    ClaudeCodeOptions,
-    Message,
-    ResultMessage,
-    SystemMessage,
-    UserMessage,
-)
-from claude_code_sdk import query as claude_query
 from loguru import logger
+
+# Handle claude_code_sdk imports with fallback for development
+try:
+    from claude_code_sdk import (
+        AssistantMessage,
+        ClaudeCodeOptions,
+        Message,
+        ResultMessage,
+        SystemMessage,
+        UserMessage,
+    )
+    from claude_code_sdk import query as claude_query
+    SDK_AVAILABLE = True
+except ImportError:
+    # Create mock classes for development when SDK is not available
+    msg = "claude_code_sdk not available, using mock classes for development"
+    logger.warning(msg)
+
+    class MockMessage:
+        def __init__(self, role=None, content=None):
+            self.role = role
+            self.content = content
+
+    class MockOptions:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    # Mock the classes
+    AssistantMessage = MockMessage
+    ClaudeCodeOptions = MockOptions
+    Message = MockMessage
+    ResultMessage = MockMessage
+    SystemMessage = MockMessage
+    UserMessage = MockMessage
+
+    async def claude_query(prompt, options):
+        # Mock query function that raises an error indicating SDK not available
+        # Use variables to avoid linting errors
+        _ = prompt, options
+        sdk_error_msg = "claude_code_sdk not available - this is a development mock"
+        raise ImportError(sdk_error_msg)
+
+    SDK_AVAILABLE = False
 
 try:
     from claif_cla.__version__ import __version__
