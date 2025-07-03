@@ -22,8 +22,9 @@ try:
     from claude_code.code_tools import CodeToolFactory
     from claude_code_sdk import Message as ClaudeMessage
     from claude_code_sdk import TextBlock as ClaudeTextBlock
-    from claude_code_sdk import ToolUseBlock as ClaudeToolUseBlock
     from claude_code_sdk import ToolResultBlock as ClaudeToolResultBlock
+    from claude_code_sdk import ToolUseBlock as ClaudeToolUseBlock
+
     CLAUDE_CODE_AVAILABLE = True
 except ImportError:
     # Create mock classes for development when claude_code is not available
@@ -67,9 +68,6 @@ from tenacity import (
 from claif_cla import query as base_query
 
 
-
-
-
 class ResponseCache:
     """
     A simple in-memory cache for Claude API responses with a time-to-live (TTL).
@@ -103,7 +101,7 @@ class ResponseCache:
         Returns:
             A SHA256 hash string representing the cache key.
         """
-        key_data: Dict[str, Any] = {
+        key_data: dict[str, Any] = {
             "prompt": prompt,
             "model": options.model,
             "temperature": options.temperature,
@@ -113,7 +111,7 @@ class ResponseCache:
         key_str: str = json.dumps(key_data, sort_keys=True)
         return hashlib.sha256(key_str.encode()).hexdigest()
 
-    def get(self, prompt: str, options: ClaifOptions) -> Optional[List[Dict[str, Any]]]:
+    def get(self, prompt: str, options: ClaifOptions) -> list[dict[str, Any]] | None:
         """
         Retrieves a cached response if available and not expired.
 
@@ -135,8 +133,8 @@ class ResponseCache:
             return None
 
         try:
-            with open(cache_file, "r") as f:
-                data: Dict[str, Any] = json.load(f)
+            with open(cache_file) as f:
+                data: dict[str, Any] = json.load(f)
 
             # Check if the cached entry has expired.
             if time.time() - data["timestamp"] > self.ttl:
@@ -151,7 +149,7 @@ class ResponseCache:
             logger.warning(f"Failed to read from cache file {cache_file}: {e}")
             return None
 
-    def set(self, prompt: str, options: ClaifOptions, messages: List[Dict[str, Any]]) -> None:
+    def set(self, prompt: str, options: ClaifOptions, messages: list[dict[str, Any]]) -> None:
         """
         Caches a response.
 
@@ -167,19 +165,19 @@ class ResponseCache:
         cache_file: Path = self.cache_dir / f"{key}.json"
 
         try:
-            data: Dict[str, Any] = {
+            data: dict[str, Any] = {
                 "timestamp": time.time(),
                 "prompt": prompt,
                 "options": {
                     "model": options.model,
                     "temperature": options.temperature,
                     "system_prompt": options.system_prompt,
-                }, # Store relevant options for debugging/inspection
+                },  # Store relevant options for debugging/inspection
                 "messages": messages,
             }
 
             with open(cache_file, "w") as f:
-                json.dump(data, f, indent=2) # Use indent for readability
+                json.dump(data, f, indent=2)  # Use indent for readability
 
             logger.debug(f"Cached response for key {key} to {cache_file}")
 
@@ -206,20 +204,20 @@ class ClaudeWrapper:
         self.config: Config = config
         self.client: ClaudeCodeClient = ClaudeCodeClient(api_key=self.config.api_key)
         self.tool_factory: CodeToolFactory = CodeToolFactory()
-        
+
         # Configure response caching.
         cache_dir: Path = Path.home() / ".claif" / "cache" / "claude"
         self.cache: ResponseCache = ResponseCache(cache_dir, self.config.cache_ttl)
-        
+
         # Retrieve retry parameters from the configuration.
         self.retry_count: int = self.config.retry_config.get("count", 3)
         self.retry_delay: float = self.config.retry_config.get("delay", 1.0)
-        self.retry_backoff: float = self.config.retry_config.get("backoff", 2.0) # Default backoff factor
+        self.retry_backoff: float = self.config.retry_config.get("backoff", 2.0)  # Default backoff factor
 
     async def query(
         self,
         prompt: str,
-        options: Optional[ClaifOptions] = None,
+        options: ClaifOptions | None = None,
     ) -> AsyncIterator[ClaudeMessage]:
         """
         Sends a query to the Claude LLM with enhanced features like caching and retries.
@@ -241,7 +239,7 @@ class ClaudeWrapper:
             options = ClaifOptions()
 
         # Attempt to retrieve the response from cache first.
-        cached_messages_data: Optional[List[Dict[str, Any]]] = self.cache.get(prompt, options)
+        cached_messages_data: list[dict[str, Any]] | None = self.cache.get(prompt, options)
         if cached_messages_data:
             logger.debug("Serving response from cache.")
             for msg_data in cached_messages_data:
@@ -258,7 +256,7 @@ class ClaudeWrapper:
         # If retries are explicitly disabled or the retry count is zero/negative,
         # execute the query once without any retry mechanism.
         if no_retry or retry_count <= 0:
-            messages_to_cache: List[Dict[str, Any]] = []
+            messages_to_cache: list[dict[str, Any]] = []
             async for message in base_query(prompt, options):
                 messages_to_cache.append(self._message_to_dict(message))
                 yield message
@@ -270,32 +268,32 @@ class ClaudeWrapper:
 
         # List to collect messages for caching after successful retrieval.
         messages_to_cache = []
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         # Define exceptions that trigger a retry.
         retry_exceptions: Tuple[Type[Exception], ...] = (
             ClaifTimeoutError,  # Custom timeout error from Claif
-            ProviderError,      # Custom provider-specific errors
-            ConnectionError,    # Network connection issues
-            asyncio.TimeoutError, # asyncio-specific timeout
-            Exception,          # Catch-all for unexpected errors during query
+            ProviderError,  # Custom provider-specific errors
+            ConnectionError,  # Network connection issues
+            asyncio.TimeoutError,  # asyncio-specific timeout
+            Exception,  # Catch-all for unexpected errors during query
         )
 
         try:
             # Configure and execute the retry mechanism using tenacity.
             async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(retry_count), # Stop after N attempts
+                stop=stop_after_attempt(retry_count),  # Stop after N attempts
                 wait=wait_exponential(
                     multiplier=retry_delay,
                     min=retry_delay,
                     max=retry_delay * (retry_backoff ** (retry_count - 1)),
-                ), # Exponential backoff strategy
-                retry=retry_if_exception_type(retry_exceptions), # Retry only on specified exceptions
-                reraise=True, # Re-raise the last exception if all retries fail
+                ),  # Exponential backoff strategy
+                retry=retry_if_exception_type(retry_exceptions),  # Retry only on specified exceptions
+                reraise=True,  # Re-raise the last exception if all retries fail
             ):
                 with attempt:
                     try:
-                        messages_for_current_attempt: List[Dict[str, Any]] = []
+                        messages_for_current_attempt: list[dict[str, Any]] = []
                         async for message in base_query(prompt, options):
                             messages_for_current_attempt.append(self._message_to_dict(message))
                             yield message
@@ -307,34 +305,34 @@ class ClaudeWrapper:
                         if messages_to_cache and options.cache:
                             self.cache.set(prompt, options, messages_to_cache)
 
-                        return # Exit on successful attempt
+                        return  # Exit on successful attempt
 
                     except Exception as e:
                         last_error = e
                         logger.warning(f"Claude query attempt {attempt.retry_state.attempt_number} failed: {e}")
-                        raise # Re-raise to trigger tenacity retry logic
+                        raise  # Re-raise to trigger tenacity retry logic
 
         except RetryError as e:
             # This block is executed if all retry attempts fail.
             # It extracts the last encountered error and maps it to a more specific Claif error.
             final_error: Exception = last_error if last_error else e.__cause__ or e
             error_str: str = str(final_error).lower()
-            
+
             # Check for specific error types and raise appropriate Claif exceptions.
             if "timeout" in error_str:
                 msg = f"Claude query timed out after {retry_count} retries"
                 raise ClaifTimeoutError(msg) from final_error
             elif any(indicator in error_str for indicator in ["quota", "rate limit", "429", "exhausted"]):
                 msg = f"Claude API quota/rate limit exceeded after {retry_count} retries"
+                msg = "claude"
                 raise ProviderError(
-                    "claude",
-                    msg,
-                    {"last_error": str(final_error), "prompt_snippet": prompt[:100]}
+                    msg, msg, {"last_error": str(final_error), "prompt_snippet": prompt[:100]}
                 ) from final_error
             else:
                 # For other errors, raise a generic ProviderError.
+                msg = "claude"
                 raise ProviderError(
-                    "claude",
+                    msg,
                     f"Query failed after {retry_count} retries",
                     {
                         "last_error": str(final_error),
@@ -342,7 +340,7 @@ class ClaudeWrapper:
                     },
                 ) from final_error
 
-    def _message_to_dict(self, message: ClaudeMessage) -> Dict[str, Any]:
+    def _message_to_dict(self, message: ClaudeMessage) -> dict[str, Any]:
         """
         Converts a `claude_code_sdk.Message` object to a dictionary for caching.
 
@@ -355,18 +353,20 @@ class ClaudeWrapper:
         Returns:
             A dictionary representation of the message.
         """
-        content_data: Union[str, List[Dict[str, Any]]]
+        content_data: str | list[dict[str, Any]]
 
         if isinstance(message.content, str):
             content_data = message.content
         else:
             # Handle list of content blocks
-            serialized_blocks: List[Dict[str, Any]] = []
+            serialized_blocks: list[dict[str, Any]] = []
             for block in message.content:
                 if isinstance(block, ClaudeTextBlock):
                     serialized_blocks.append({"type": block.type, "text": block.text})
                 elif isinstance(block, ClaudeToolUseBlock):
-                    serialized_blocks.append({"type": block.type, "id": block.id, "name": block.name, "input": block.input})
+                    serialized_blocks.append(
+                        {"type": block.type, "id": block.id, "name": block.name, "input": block.input}
+                    )
                 elif isinstance(block, ClaudeToolResultBlock):
                     # Recursively convert content within ToolResultBlock if it's a list of blocks
                     tool_result_content = block.content
@@ -381,7 +381,14 @@ class ClaudeWrapper:
                     else:
                         serialized_tool_result_content = str(tool_result_content)
 
-                    serialized_blocks.append({"type": block.type, "tool_use_id": block.tool_use_id, "content": serialized_tool_result_content, "is_error": block.is_error})
+                    serialized_blocks.append(
+                        {
+                            "type": block.type,
+                            "tool_use_id": block.tool_use_id,
+                            "content": serialized_tool_result_content,
+                            "is_error": block.is_error,
+                        }
+                    )
                 else:
                     # Fallback for any other unexpected block types
                     serialized_blocks.append({"type": "unknown", "content": str(block)})
@@ -389,7 +396,7 @@ class ClaudeWrapper:
 
         return {"role": message.role, "content": content_data}
 
-    def _dict_to_message(self, data: Dict[str, Any]) -> ClaudeMessage:
+    def _dict_to_message(self, data: dict[str, Any]) -> ClaudeMessage:
         """
         Converts a dictionary back to a `claude_code_sdk.Message` object.
 
@@ -402,23 +409,29 @@ class ClaudeWrapper:
         Returns:
             A `claude_code_sdk.Message` object.
         """
-        content_from_dict: Union[str, List[Union[ClaudeTextBlock, ClaudeToolUseBlock, ClaudeToolResultBlock]]]
+        content_from_dict: str | list[ClaudeTextBlock | ClaudeToolUseBlock | ClaudeToolResultBlock]
 
         if isinstance(data["content"], str):
             content_from_dict = data["content"]
         else:
             # Reconstruct list of content blocks
-            deserialized_blocks: List[Union[ClaudeTextBlock, ClaudeToolUseBlock, ClaudeToolResultBlock]] = []
+            deserialized_blocks: list[ClaudeTextBlock | ClaudeToolUseBlock | ClaudeToolResultBlock] = []
             for block_data in data["content"]:
                 block_type = block_data.get("type")
                 if block_type == "text":
                     deserialized_blocks.append(ClaudeTextBlock(text=block_data.get("text", "")))
                 elif block_type == "tool_use":
-                    deserialized_blocks.append(ClaudeToolUseBlock(id=block_data.get("id", ""), name=block_data.get("name", ""), input=block_data.get("input", {})))
+                    deserialized_blocks.append(
+                        ClaudeToolUseBlock(
+                            id=block_data.get("id", ""),
+                            name=block_data.get("name", ""),
+                            input=block_data.get("input", {}),
+                        )
+                    )
                 elif block_type == "tool_result":
                     # Recursively deserialize content within ToolResultBlock
                     tr_content_data = block_data.get("content")
-                    deserialized_tr_content: Union[str, List[ClaudeTextBlock]]
+                    deserialized_tr_content: str | list[ClaudeTextBlock]
                     if isinstance(tr_content_data, list):
                         deserialized_tr_content = []
                         for tr_block_data in tr_content_data:
@@ -430,11 +443,17 @@ class ClaudeWrapper:
                     else:
                         deserialized_tr_content = str(tr_content_data)
 
-                    deserialized_blocks.append(ClaudeToolResultBlock(tool_use_id=block_data.get("tool_use_id", ""), content=deserialized_tr_content, is_error=block_data.get("is_error", False)))
+                    deserialized_blocks.append(
+                        ClaudeToolResultBlock(
+                            tool_use_id=block_data.get("tool_use_id", ""),
+                            content=deserialized_tr_content,
+                            is_error=block_data.get("is_error", False),
+                        )
+                    )
                 # Add handling for any other custom block types if they exist
                 else:
                     logger.warning(f"Unknown content block type encountered: {block_type}")
-                    deserialized_blocks.append(ClaudeTextBlock(text=str(block_data))) # Fallback to text
+                    deserialized_blocks.append(ClaudeTextBlock(text=str(block_data)))  # Fallback to text
             content_from_dict = deserialized_blocks
 
         return ClaudeMessage(role=data["role"], content=content_from_dict)

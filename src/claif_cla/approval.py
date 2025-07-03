@@ -177,7 +177,9 @@ class Interactive(ApprovalStrategy):
 
         # In a non-interactive environment, we cannot prompt the user.
         # Therefore, any tool not auto-approved as safe is denied.
-        logger.debug(f"Interactive: Tool {tool_name} would require user prompt, denying in non-interactive environment.")
+        logger.debug(
+            f"Interactive: Tool {tool_name} would require user prompt, denying in non-interactive environment."
+        )
         return False
 
     def get_description(self) -> str:
@@ -185,6 +187,3 @@ class Interactive(ApprovalStrategy):
         Returns a description for the Interactive strategy.
         """
         return "Interactive approval" + (" (auto-approve safe)" if self.auto_approve_safe else "")
-
-
-

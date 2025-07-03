@@ -36,7 +36,6 @@ def main():
         if arg.startswith("tests/") or arg.endswith(".py"):
             cmd.append(arg)
 
-
     # Run pytest
     result = subprocess.run(cmd, check=False, cwd=test_dir)
     sys.exit(result.returncode)

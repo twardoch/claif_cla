@@ -3,17 +3,19 @@
 import asyncio
 import sys
 import time
-from typing import AsyncIterator, Dict, Any
+from collections.abc import AsyncIterator
+from typing import Any, Dict
 
+from claif.common import ClaifOptions, ClaifTimeoutError, Message, ProviderError
+from claif.common.install import InstallError
+from claif.common.utils import _print_error, _print_success, _print_warning
 from loguru import logger
 from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
 
-from claif.common import ClaifOptions, Message, ProviderError, ClaifTimeoutError
-from claif.common.install import InstallError
-from claif.common.utils import _print_error, _print_warning, _print_success
-from claif_cla.transport import ClaudeTransport
 from claif_cla.install import install_claude, is_claude_installed
-from claif_cla.types import Message as ClaudeMessage, ResultMessage
+from claif_cla.transport import ClaudeTransport
+from claif_cla.types import Message as ClaudeMessage
+from claif_cla.types import ResultMessage
 
 
 class ClaudeClient:
@@ -74,7 +76,7 @@ class ClaudeClient:
 
         retry_config = self.config.retry_config
         if options.no_retry:
-            retry_config = {"count": 1, "delay": 0, "backoff": 1} # No retry
+            retry_config = {"count": 1, "delay": 0, "backoff": 1}  # No retry
 
         last_error: Exception | None = None
 
@@ -94,8 +96,9 @@ class ClaudeClient:
                                 yield response.to_claif_message()
                             elif isinstance(response, ResultMessage) and response.error:
                                 logger.error(f"Claude error: {response.message}")
+                                msg = f"Claude CLI error: {response.message}"
                                 raise ProviderError(
-                                    f"Claude CLI error: {response.message}",
+                                    msg,
                                     details={"error_code": response.error_code, "raw_message": response.message},
                                 )
                     except (InstallError, FileNotFoundError) as e:
@@ -104,35 +107,40 @@ class ClaudeClient:
                             install_claude()
                             _print_success("Claude CLI installed successfully. Retrying query...")
                             # After successful install, retry the query
-                            await self.transport.connect() # Reconnect after install
+                            await self.transport.connect()  # Reconnect after install
                             async for response in self.transport.send_query(prompt, options):
                                 if isinstance(response, ClaudeMessage):
                                     yield response.to_claif_message()
                                 elif isinstance(response, ResultMessage) and response.error:
                                     logger.error(f"Claude error: {response.message}")
+                                    msg = f"Claude CLI error: {response.message}"
                                     raise ProviderError(
-                                        f"Claude CLI error: {response.message}",
+                                        msg,
                                         details={"error_code": response.error_code, "raw_message": response.message},
                                     )
                         except Exception as install_e:
                             _print_error(f"Auto-install failed: {install_e}")
-                            raise ProviderError(f"Failed to install Claude CLI: {install_e}") from install_e
+                            msg = f"Failed to install Claude CLI: {install_e}"
+                            raise ProviderError(msg) from install_e
                     except TimeoutError as e:
-                        raise ClaifTimeoutError(f"Claude query timed out after {options.timeout} seconds.") from e
+                        msg = f"Claude query timed out after {options.timeout} seconds."
+                        raise ClaifTimeoutError(msg) from e
                     except Exception as e:
                         last_error = e
                         logger.warning(f"Claude query failed: {e}. Retrying...")
-                        raise # Re-raise to trigger tenacity retry
+                        raise  # Re-raise to trigger tenacity retry
 
         except Exception as e:
             if last_error:
                 _print_error(f"Claude query failed after {retry_config['count']} retries: {last_error}")
+                msg = f"Query failed after {retry_config['count']} retries."
                 raise ProviderError(
-                    f"Query failed after {retry_config['count']} retries.",
+                    msg,
                     details={"last_error": str(last_error)},
                 ) from last_error
             _print_error(f"Claude query failed: {e}")
-            raise ProviderError(f"Claude query failed: {e}") from e
+            msg = f"Claude query failed: {e}"
+            raise ProviderError(msg) from e
         finally:
             await self.transport.disconnect()
 
@@ -140,7 +148,7 @@ class ClaudeClient:
         """Check if Claude CLI is installed and executable."""
         return is_claude_installed()
 
-    async def get_models(self) -> Dict[str, Any]:
+    async def get_models(self) -> dict[str, Any]:
         """Get available Claude models (currently hardcoded)."""
         return {
             "claude-3-opus-20240229": {"description": "Claude 3 Opus (most powerful)"},
@@ -148,7 +156,9 @@ class ClaudeClient:
             "claude-3-haiku-20240229": {"description": "Claude 3 Haiku (fastest)"},
         }
 
+
 _client: ClaudeClient | None = None
+
 
 def get_client(config: Any) -> ClaudeClient:
     """Get singleton ClaudeClient instance."""
@@ -157,8 +167,9 @@ def get_client(config: Any) -> ClaudeClient:
         _client = ClaudeClient(config)
     return _client
 
+
 async def query(prompt: str, options: ClaifOptions | None = None) -> AsyncIterator[Message]:
     """Module-level query function to access the singleton client."""
-    client = get_client(options.config) # Assuming options.config holds the config
+    client = get_client(options.config)  # Assuming options.config holds the config
     async for msg in client.query(prompt, options):
         yield msg

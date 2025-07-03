@@ -4,8 +4,6 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict
 
-from loguru import logger
-
 # Import common install functionality
 from claif.common.utils import prompt_tool_configuration
 from claif.install import (
@@ -15,6 +13,7 @@ from claif.install import (
     install_npm_package_globally,
     uninstall_tool,
 )
+from loguru import logger
 
 
 def install_claude_bundled(install_dir: Path, dist_dir: Path) -> bool:
@@ -77,7 +76,7 @@ cd "{claude_install_dir}" && exec ./claude "$@"
         return False
 
 
-def install_claude() -> Dict[str, Any]:
+def install_claude() -> dict[str, Any]:
     """
     Orchestrates the installation of the Claude CLI, including bun, npm package,
     bundling, and final executable installation.
@@ -89,20 +88,32 @@ def install_claude() -> Dict[str, Any]:
     # Step 1: Ensure 'bun' is installed, as it's required for bundling.
     logger.info("Ensuring bun is installed...")
     if not ensure_bun_installed():
-        return {"installed": [], "failed": ["bun"], "message": "Bun installation failed. Please install Bun manually or check your internet connection."}
+        return {
+            "installed": [],
+            "failed": ["bun"],
+            "message": "Bun installation failed. Please install Bun manually or check your internet connection.",
+        }
 
     install_dir: Path = get_install_location()
 
     # Step 2: Install the @anthropic-ai/claude-code npm package globally.
     logger.info("Installing @anthropic-ai/claude-code npm package globally...")
     if not install_npm_package_globally("@anthropic-ai/claude-code"):
-        return {"installed": [], "failed": ["@anthropic-ai/claude-code"], "message": "Failed to install @anthropic-ai/claude-code npm package. Check npm/network."}
+        return {
+            "installed": [],
+            "failed": ["@anthropic-ai/claude-code"],
+            "message": "Failed to install @anthropic-ai/claude-code npm package. Check npm/network.",
+        }
 
     # Step 3: Bundle all CLI tools into a distribution directory.
     logger.info("Bundling Claude CLI tools...")
     dist_dir: Optional[Path] = bundle_all_tools()
     if not dist_dir:
-        return {"installed": [], "failed": ["bundling"], "message": "Failed to bundle Claude CLI tools. Check bun installation and permissions."}
+        return {
+            "installed": [],
+            "failed": ["bundling"],
+            "message": "Failed to bundle Claude CLI tools. Check bun installation and permissions.",
+        }
 
     # Step 4: Install the specifically bundled Claude executable.
     logger.info("Installing bundled Claude executable...")
@@ -118,11 +129,10 @@ def install_claude() -> Dict[str, Any]:
         prompt_tool_configuration("Claude", config_commands)
 
         return {"installed": ["claude"], "failed": [], "install_dir": str(install_dir)}
-    else:
-        return {"installed": [], "failed": ["claude"], "message": "Failed to install the bundled Claude executable."}
+    return {"installed": [], "failed": ["claude"], "message": "Failed to install the bundled Claude executable."}
 
 
-def uninstall_claude() -> Dict[str, Any]:
+def uninstall_claude() -> dict[str, Any]:
     """
     Uninstalls the Claude CLI by removing its bundled executable and associated directory.
 
@@ -150,12 +160,15 @@ def uninstall_claude() -> Dict[str, Any]:
             uninstalled_components.append("claude-bin-dir")
         except Exception as e:
             logger.error(f"Failed to remove Claude installation directory {claude_bin_dir}: {e}")
-            return {"uninstalled": uninstalled_components, "failed": ["claude-bin-dir"], "message": f"Failed to remove directory: {e}"}
+            return {
+                "uninstalled": uninstalled_components,
+                "failed": ["claude-bin-dir"],
+                "message": f"Failed to remove directory: {e}",
+            }
 
     if uninstalled_components:
         return {"uninstalled": uninstalled_components, "failed": [], "message": "Claude uninstalled successfully!"}
-    else:
-        return {"uninstalled": [], "failed": ["claude"], "message": "Claude was not found or failed to uninstall."}
+    return {"uninstalled": [], "failed": ["claude"], "message": "Claude was not found or failed to uninstall."}
 
 
 def is_claude_installed() -> bool:
@@ -172,11 +185,12 @@ def is_claude_installed() -> bool:
     claude_wrapper_path: Path = install_dir / "claude"
     claude_bin_dir: Path = install_dir / "claude-bin"
 
-    return (claude_wrapper_path.exists() and claude_wrapper_path.is_file()) or \
-           (claude_bin_dir.exists() and claude_bin_dir.is_dir())
+    return (claude_wrapper_path.exists() and claude_wrapper_path.is_file()) or (
+        claude_bin_dir.exists() and claude_bin_dir.is_dir()
+    )
 
 
-def get_claude_status() -> Dict[str, Any]:
+def get_claude_status() -> dict[str, Any]:
     """
     Retrieves the installation status of the Claude CLI.
 

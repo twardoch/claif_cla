@@ -14,8 +14,9 @@ class TestClaudeMessageConversion:
 
     def test_convert_user_message(self):
         """Test converting UserMessage to ClaifMessage."""
-        from claif_cla import _convert_claude_message_to_claif
         from claif.common import TextBlock
+
+        from claif_cla import _convert_claude_message_to_claif
 
         claude_msg = UserMessage(content="Hello, Claude!")
         claif_msg = _convert_claude_message_to_claif(claude_msg)
@@ -29,8 +30,9 @@ class TestClaudeMessageConversion:
 
     def test_convert_assistant_message_with_text_blocks(self):
         """Test converting AssistantMessage with text blocks."""
-        from claif_cla import _convert_claude_message_to_claif
         from claif.common import TextBlock
+
+        from claif_cla import _convert_claude_message_to_claif
 
         # Mock text blocks
         block1 = Mock(text="First part")
@@ -48,14 +50,15 @@ class TestClaudeMessageConversion:
 
     def test_convert_assistant_message_without_text_attr(self):
         """Test converting AssistantMessage with blocks lacking text attribute."""
-        from claif_cla import _convert_claude_message_to_claif
         from claif.common import TextBlock
+
+        from claif_cla import _convert_claude_message_to_claif
 
         # Mock blocks without text attribute
         class MockBlock:
             def __str__(self):
                 return "Block 1 string"
-        
+
         block1 = MockBlock()
 
         claude_msg = AssistantMessage(content=[block1])
@@ -88,8 +91,9 @@ class TestClaudeMessageConversion:
 
     def test_convert_unknown_message_type(self):
         """Test converting unknown message type."""
-        from claif_cla import _convert_claude_message_to_claif
         from claif.common import TextBlock
+
+        from claif_cla import _convert_claude_message_to_claif
 
         # Mock unknown message type
         claude_msg = Mock()
@@ -219,7 +223,8 @@ class TestQuery:
 
             # Verify query succeeded after install
             assert len(messages) == 2
-            assert len(messages[1].content) == 1 and messages[1].content[0].text == "Success after install"
+            assert len(messages[1].content) == 1
+            assert messages[1].content[0].text == "Success after install"
 
     async def test_query_auto_install_failure(self, mock_install_claude):
         """Test error when auto-install fails."""

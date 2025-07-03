@@ -2,15 +2,15 @@
 """Session management for Claude conversations."""
 
 import asyncio
+import copy
 import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Union
-import copy
 
 import aiofiles
-from claif.common import Message, MessageRole, TextBlock, ToolUseBlock, ToolResultBlock
+from claif.common import Message, MessageRole, TextBlock, ToolResultBlock, ToolUseBlock
 from loguru import logger
 
 
@@ -22,7 +22,7 @@ class Session:
     for branching or restoring conversation states.
     """
 
-    def __init__(self, session_id: str, created_at: Optional[datetime] = None) -> None:
+    def __init__(self, session_id: str, created_at: datetime | None = None) -> None:
         """
         Initializes a new conversation session.
 
@@ -32,9 +32,9 @@ class Session:
         """
         self.id: str = session_id
         self.created_at: datetime = created_at or datetime.now(timezone.utc)
-        self.messages: List[Message] = []
-        self.metadata: Dict[str, Any] = {}
-        self.checkpoints: List[int] = []
+        self.messages: list[Message] = []
+        self.metadata: dict[str, Any] = {}
+        self.checkpoints: list[int] = []
 
     def add_message(self, message: Message) -> None:
         """
@@ -79,7 +79,7 @@ class Session:
             logger.error(msg)
             raise ValueError(msg)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Converts the Session object to a dictionary for serialization.
 
@@ -94,24 +94,26 @@ class Session:
         Returns:
             A dictionary representation of the session.
         """
-        serialized_messages: List[Dict[str, Any]] = []
+        serialized_messages: list[dict[str, Any]] = []
         for msg in self.messages:
-            serialized_content: Union[str, List[Dict[str, Any]]]
+            serialized_content: str | list[dict[str, Any]]
             if isinstance(msg.content, str):
                 serialized_content = msg.content
             else:
                 # Handle list of ContentBlock types
-                blocks_data: List[Dict[str, Any]] = []
+                blocks_data: list[dict[str, Any]] = []
                 for block in msg.content:
                     if isinstance(block, TextBlock):
                         blocks_data.append({"type": "text", "text": block.text})
                     elif isinstance(block, ToolUseBlock):
-                        blocks_data.append({"type": "tool_use", "id": block.id, "name": block.name, "input": block.input})
+                        blocks_data.append(
+                            {"type": "tool_use", "id": block.id, "name": block.name, "input": block.input}
+                        )
                     elif isinstance(block, ToolResultBlock):
                         # Recursively serialize content within ToolResultBlock
-                        tool_result_content_data: Union[str, List[Dict[str, Any]]]
+                        tool_result_content_data: str | list[dict[str, Any]]
                         if isinstance(block.content, list):
-                            nested_blocks_data: List[Dict[str, Any]] = []
+                            nested_blocks_data: list[dict[str, Any]] = []
                             for nested_block in block.content:
                                 if isinstance(nested_block, TextBlock):
                                     nested_blocks_data.append({"type": "text", "text": nested_block.text})
@@ -122,7 +124,14 @@ class Session:
                         else:
                             tool_result_content_data = str(block.content)
 
-                        blocks_data.append({"type": "tool_result", "tool_use_id": block.tool_use_id, "content": tool_result_content_data, "is_error": block.is_error})
+                        blocks_data.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": block.tool_use_id,
+                                "content": tool_result_content_data,
+                                "is_error": block.is_error,
+                            }
+                        )
                     else:
                         # Fallback for any other unexpected ContentBlock types
                         blocks_data.append({"type": "unknown", "data": str(block)})
@@ -139,7 +148,7 @@ class Session:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Session":
+    def from_dict(cls, data: dict[str, Any]) -> "Session":
         """
         Creates a Session object from a dictionary representation.
 
@@ -164,26 +173,32 @@ class Session:
         )
 
         for msg_data in data.get("messages", []):
-            deserialized_content: Union[str, List[Union[TextBlock, ToolUseBlock, ToolResultBlock]]]
+            deserialized_content: str | list[TextBlock | ToolUseBlock | ToolResultBlock]
             content_data = msg_data["content"]
 
             if isinstance(content_data, str):
                 deserialized_content = content_data
             else:
                 # Handle list of content blocks
-                deserialized_blocks: List[Union[TextBlock, ToolUseBlock, ToolResultBlock]] = []
+                deserialized_blocks: list[TextBlock | ToolUseBlock | ToolResultBlock] = []
                 for block_data in content_data:
                     block_type = block_data.get("type")
                     if block_type == "text":
                         deserialized_blocks.append(TextBlock(text=block_data.get("text", "")))
                     elif block_type == "tool_use":
-                        deserialized_blocks.append(ToolUseBlock(id=block_data.get("id", ""), name=block_data.get("name", ""), input=block_data.get("input", {})))
+                        deserialized_blocks.append(
+                            ToolUseBlock(
+                                id=block_data.get("id", ""),
+                                name=block_data.get("name", ""),
+                                input=block_data.get("input", {}),
+                            )
+                        )
                     elif block_type == "tool_result":
                         # Recursively deserialize content within ToolResultBlock
                         tr_content_data = block_data.get("content")
-                        deserialized_tr_content: Union[str, List[TextBlock]]
+                        deserialized_tr_content: str | list[TextBlock]
                         if isinstance(tr_content_data, list):
-                            nested_deserialized_blocks: List[TextBlock] = []
+                            nested_deserialized_blocks: list[TextBlock] = []
                             for nested_block_data in tr_content_data:
                                 if nested_block_data.get("type") == "text":
                                     nested_deserialized_blocks.append(TextBlock(text=nested_block_data.get("text", "")))
@@ -194,7 +209,13 @@ class Session:
                         else:
                             deserialized_tr_content = str(tr_content_data)
 
-                        deserialized_blocks.append(ToolResultBlock(tool_use_id=block_data.get("tool_use_id", ""), content=deserialized_tr_content, is_error=block_data.get("is_error", False)))
+                        deserialized_blocks.append(
+                            ToolResultBlock(
+                                tool_use_id=block_data.get("tool_use_id", ""),
+                                content=deserialized_tr_content,
+                                is_error=block_data.get("is_error", False),
+                            )
+                        )
                     else:
                         # Fallback for any other unexpected ContentBlock types
                         deserialized_blocks.append(TextBlock(text=str(block_data)))
@@ -220,7 +241,7 @@ class SessionManager:
     manipulating sessions (branching, merging) to/from disk.
     """
 
-    TEMPLATES: ClassVar[Dict[str, Any]] = {
+    TEMPLATES: ClassVar[dict[str, Any]] = {
         "code_review": {
             "system": (
                 "You are a code reviewer. Analyze the provided code for bugs, performance issues, and best practices."
@@ -261,7 +282,7 @@ class SessionManager:
         },
     }
 
-    def __init__(self, session_dir: Optional[str] = None) -> None:
+    def __init__(self, session_dir: str | None = None) -> None:
         """
         Initializes the SessionManager.
 
@@ -273,7 +294,7 @@ class SessionManager:
             self.session_dir: Path = Path(session_dir)
         else:
             self.session_dir = Path.home() / ".claif" / "sessions"
-        self.active_sessions: Dict[str, Session] = {}
+        self.active_sessions: dict[str, Session] = {}
 
     async def initialize(self) -> None:
         """
@@ -284,7 +305,7 @@ class SessionManager:
         if not await asyncio.to_thread(self.session_dir.exists):
             await asyncio.to_thread(self.session_dir.mkdir, parents=True, exist_ok=True)
 
-    async def create_session(self, session_id: Optional[str] = None, template_name: Optional[str] = None) -> str:
+    async def create_session(self, session_id: str | None = None, template_name: str | None = None) -> str:
         """
         Creates a new conversation session.
 
@@ -311,17 +332,18 @@ class SessionManager:
                 msg = f"Unknown template: {template_name}"
                 logger.error(msg)
                 raise ValueError(msg)
-            
+
             template = self.TEMPLATES[template_name]
             session.metadata["template"] = template_name
             session.metadata["system_prompt"] = template.get("system", "")
 
             import copy
+
             for msg_data in template.get("initial_messages", []):
                 # Deepcopy the message data to ensure that modifications to the session's messages
                 # do not affect the original template messages.
                 msg_data_copy = copy.deepcopy(msg_data)
-                
+
                 if isinstance(msg_data_copy, Message):
                     session.add_message(msg_data_copy)
                 else:
@@ -364,8 +386,8 @@ class SessionManager:
             logger.error(msg)
             raise ValueError(msg)
 
-        async with aiofiles.open(session_file, "r") as f:
-            data: Dict[str, Any] = json.loads(await f.read())
+        async with aiofiles.open(session_file) as f:
+            data: dict[str, Any] = json.loads(await f.read())
 
         session: Session = Session.from_dict(data)
         self.active_sessions[session_id] = session
@@ -413,22 +435,22 @@ class SessionManager:
 
         logger.info(f"Session {session_id} deleted.")
 
-    async def list_sessions(self) -> List[str]:
+    async def list_sessions(self) -> list[str]:
         """
         Lists the IDs of all available sessions on disk.
 
         Returns:
             A sorted list of session IDs.
         """
-        sessions: List[str] = []
+        sessions: list[str] = []
         # Use asyncio.to_thread for blocking I/O operations like glob.
-        session_files: List[Path] = await asyncio.to_thread(list, self.session_dir.glob("*.json"))
+        session_files: list[Path] = await asyncio.to_thread(list, self.session_dir.glob("*.json"))
         for session_file in session_files:
             session_id: str = session_file.stem
             sessions.append(session_id)
         return sorted(sessions)
 
-    async def get_session_info(self, session_id: str) -> Dict[str, Any]:
+    async def get_session_info(self, session_id: str) -> dict[str, Any]:
         """
         Retrieves summary information about a specific session.
 
@@ -464,7 +486,7 @@ class SessionManager:
         await self.save_session(session_id)
         logger.debug(f"Added message to session {session_id}")
 
-    async def get_messages(self, session_id: str) -> List[Message]:
+    async def get_messages(self, session_id: str) -> list[Message]:
         """
         Retrieves all messages from a specified session.
 
@@ -534,7 +556,7 @@ class SessionManager:
         elif strategy == "interleave":
             # Interleave messages by alternating from source and target.
             # This is a simplified interleave and doesn't consider timestamps.
-            merged_messages: List[Message] = []
+            merged_messages: list[Message] = []
             max_len = max(len(target_session.messages), len(source_session.messages))
             for i in range(max_len):
                 if i < len(target_session.messages):
@@ -573,20 +595,19 @@ class SessionManager:
         if export_format == "json":
             # Export as JSON, converting messages to a serializable dictionary format.
             return json.dumps([self._message_to_dict(m) for m in session.messages], indent=2)
-        elif export_format == "markdown":
+        if export_format == "markdown":
             # Export as Markdown, formatting each message.
-            lines: List[str] = []
+            lines: list[str] = []
             for msg in session.messages:
                 lines.append(f"**{msg.role.value.upper()}**:")
                 lines.append(self._message_to_str(msg))
-                lines.append("") # Add an empty line for separation
+                lines.append("")  # Add an empty line for separation
             return "\n".join(lines)
-        else:
-            msg = f"Unknown export format: {export_format}. Supported formats are 'markdown' and 'json'."
-            logger.error(msg)
-            raise ValueError(msg)
+        msg = f"Unknown export format: {export_format}. Supported formats are 'markdown' and 'json'."
+        logger.error(msg)
+        raise ValueError(msg)
 
-    def _message_to_dict(self, message: Message) -> Dict[str, Any]:
+    def _message_to_dict(self, message: Message) -> dict[str, Any]:
         """
         Converts a `Message` object to a dictionary for serialization.
 
@@ -599,13 +620,13 @@ class SessionManager:
         Returns:
             A dictionary representation of the message.
         """
-        serialized_content: Union[str, List[Dict[str, Any]]]
+        serialized_content: str | list[dict[str, Any]]
 
         if isinstance(message.content, str):
             serialized_content = message.content
         else:
             # Handle list of ContentBlock types
-            blocks_data: List[Dict[str, Any]] = []
+            blocks_data: list[dict[str, Any]] = []
             for block in message.content:
                 if isinstance(block, TextBlock):
                     blocks_data.append({"type": "text", "text": block.text})
@@ -613,9 +634,9 @@ class SessionManager:
                     blocks_data.append({"type": "tool_use", "id": block.id, "name": block.name, "input": block.input})
                 elif isinstance(block, ToolResultBlock):
                     # Recursively serialize content within ToolResultBlock
-                    tool_result_content_data: Union[str, List[Dict[str, Any]]]
+                    tool_result_content_data: str | list[dict[str, Any]]
                     if isinstance(block.content, list):
-                        nested_blocks_data: List[Dict[str, Any]] = []
+                        nested_blocks_data: list[dict[str, Any]] = []
                         for nested_block in block.content:
                             if isinstance(nested_block, TextBlock):
                                 nested_blocks_data.append({"type": "text", "text": nested_block.text})
@@ -626,7 +647,14 @@ class SessionManager:
                     else:
                         tool_result_content_data = str(block.content)
 
-                    blocks_data.append({"type": "tool_result", "tool_use_id": block.tool_use_id, "content": tool_result_content_data, "is_error": block.is_error})
+                    blocks_data.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.tool_use_id,
+                            "content": tool_result_content_data,
+                            "is_error": block.is_error,
+                        }
+                    )
                 else:
                     # Fallback for any other unexpected ContentBlock types
                     blocks_data.append({"type": "unknown", "data": str(block)})
@@ -648,9 +676,9 @@ class SessionManager:
         """
         if isinstance(message.content, str):
             return message.content
-        
+
         # If content is a list of blocks, join their textual representations.
-        text_parts: List[str] = []
+        text_parts: list[str] = []
         for block in message.content:
             if isinstance(block, TextBlock):
                 text_parts.append(block.text)
@@ -662,9 +690,11 @@ class SessionManager:
                     nested_text = ", ".join([b.text for b in block.content if isinstance(b, TextBlock)])
                     text_parts.append(f"Tool Result (ID: {block.tool_use_id}, Error: {block.is_error}): {nested_text}")
                 else:
-                    text_parts.append(f"Tool Result (ID: {block.tool_use_id}, Error: {block.is_error}): {block.content}")
+                    text_parts.append(
+                        f"Tool Result (ID: {block.tool_use_id}, Error: {block.is_error}): {block.content}"
+                    )
             else:
-                text_parts.append(str(block)) # Fallback for unknown block types
+                text_parts.append(str(block))  # Fallback for unknown block types
         return "\n".join(text_parts)
 
     @classmethod
@@ -688,7 +718,7 @@ class SessionManager:
         # Create a temporary manager instance to handle session creation and saving.
         # This is a bit awkward as noted in the original code, but necessary if
         # SessionManager is not a singleton and needs to manage its own files.
-        manager = cls(session_dir=None) # Use default session_dir
+        manager = cls(session_dir=None)  # Use default session_dir
         await manager.initialize()
 
         # Delegate to the instance method for session creation with template.

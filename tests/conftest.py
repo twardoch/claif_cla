@@ -46,7 +46,7 @@ class MockAssistantMessage:
 
 
 @pytest.fixture
-def mock_claude_response() -> List[Message]:
+def mock_claude_response() -> list[Message]:
     """Mock Claude response messages using claif.common.Message."""
     return [
         Message(role=MessageRole.USER, content="Test prompt"),
@@ -82,6 +82,7 @@ mock_claude_code.code_tools = MagicMock()
 
 # Patch sys.modules to inject our mocks
 import sys
+
 sys.modules["claude_code_sdk"] = mock_claude_code_sdk
 sys.modules["claude_code"] = mock_claude_code
 sys.modules["claude_code.code_tools"] = mock_claude_code.code_tools
@@ -129,7 +130,7 @@ def mock_session_dir(temp_dir: Path) -> Path:
 
 
 @pytest.fixture
-def mock_session_file(mock_session_dir: Path) -> Tuple[Path, str]:
+def mock_session_file(mock_session_dir: Path) -> tuple[Path, str]:
     """
     Create a mock session file within the mock session directory.
 
@@ -170,7 +171,7 @@ def mock_approval_strategy() -> Mock:
 
 
 @pytest.fixture
-def mock_install_result() -> Dict[str, Any]:
+def mock_install_result() -> dict[str, Any]:
     """
     Mock installation result dictionary.
 
@@ -207,15 +208,9 @@ def event_loop():
 def mock_config():
     """Create a mock configuration for tests."""
     from claif.common import Config, Provider
-    
+
     return Config(
         default_provider=Provider.CLAUDE,
         verbose=False,
-        providers={
-            "claude": {
-                "enabled": True,
-                "model": "claude-3-sonnet",
-                "extra": {"api_key": "test-key"}
-            }
-        }
+        providers={"claude": {"enabled": True, "model": "claude-3-sonnet", "extra": {"api_key": "test-key"}}},
     )

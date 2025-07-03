@@ -2,8 +2,6 @@
 
 import asyncio
 import os
-import asyncio
-import os
 import sys
 import time
 from typing import Any, Dict, List, Optional
@@ -20,40 +18,25 @@ from claif.common import (
     format_response,
 )
 from claif.common.config import load_config
+
+# from claif_cla.wrapper import ClaudeWrapper
+from claif.common.utils import _confirm, _print, _print_error, _print_success, _print_warning, _prompt
 from loguru import logger
 
 from claif_cla.client import query
 from claif_cla.session import SessionManager
-
-# from claif_cla.wrapper import ClaudeWrapper
-
-
-from claif.common.utils import _print, _print_error, _print_success, _print_warning, _confirm, _prompt
 
 
 def main():
     """Main entry point for Fire CLI."""
     fire.Fire(ClaudeCLI)
-from claif.common import (
-    ClaifOptions,
-    Message,
-    MessageRole,
-    Provider,
-    ResponseMetrics,
-    TextBlock,
-    format_metrics,
-    format_response,
-)
-from claif.common.config import load_config
-from loguru import logger
 
-from claif_cla.client import query
-from claif_cla.session import SessionManager
+
+
 
 # from claif_cla.wrapper import ClaudeWrapper
 
 
-from claif.common.utils import _print, _print_error, _print_success, _print_warning, _confirm, _prompt
 
 
 class ClaudeCLI:
@@ -127,7 +110,7 @@ class ClaudeCLI:
 
         try:
             # Run the asynchronous query and collect all messages.
-            messages: List[Message] = asyncio.run(self._ask_async(prompt, options))
+            messages: list[Message] = asyncio.run(self._ask_async(prompt, options))
 
             # Format and display response.
             for message in messages:
@@ -153,7 +136,7 @@ class ClaudeCLI:
                 logger.exception("Full error details for Claude query failure:")
             sys.exit(1)
 
-    async def _ask_async(self, prompt: str, options: ClaifOptions) -> List[Message]:
+    async def _ask_async(self, prompt: str, options: ClaifOptions) -> list[Message]:
         """
         Asynchronously executes a Claude query and collects all messages.
 
@@ -167,7 +150,7 @@ class ClaudeCLI:
         Returns:
             A list of `Message` objects received from the Claude API.
         """
-        messages: List[Message] = []
+        messages: list[Message] = []
         manager: SessionManager = await self._get_session_manager()
 
         async for claude_msg in query(prompt, options):
@@ -261,7 +244,7 @@ class ClaudeCLI:
             # Save to session if enabled
             if options.session_id:
                 await manager.add_message(options.session_id, msg)
-            
+
             # Add a newline after each message for better readability in stream mode
             _print("")
 
@@ -305,18 +288,18 @@ class ClaudeCLI:
         manager: SessionManager = await self._get_session_manager()
 
         if action == "list":
-            sessions: List[str] = await manager.list_sessions()
+            sessions: list[str] = await manager.list_sessions()
             if not sessions:
                 _print_warning("No sessions found.")
             else:
                 _print("\n[bold underline]Active Sessions:[/bold underline]")
                 for sid in sessions:
-                    info: Dict[str, Any] = await manager.get_session_info(sid)
+                    info: dict[str, Any] = await manager.get_session_info(sid)
                     count: int = info.get("message_count", 0)
                     _print(f"  • [cyan]{sid}[/cyan]: {count} messages")
 
         elif action == "create":
-            template_name: Optional[str] = kwargs.get("template")
+            template_name: str | None = kwargs.get("template")
             try:
                 new_session_id: str = await manager.create_session(session_id, template_name=template_name)
                 _print_success(f"Created session: [cyan]{new_session_id}[/cyan]")
@@ -327,7 +310,9 @@ class ClaudeCLI:
             if not session_id:
                 _print_error("Session ID is required for 'delete' action.")
                 return
-            if _confirm(f"Are you sure you want to delete session [cyan]{session_id}[/cyan]? This action cannot be undone."):
+            if _confirm(
+                f"Are you sure you want to delete session [cyan]{session_id}[/cyan]? This action cannot be undone."
+            ):
                 await manager.delete_session(session_id)
                 _print_success(f"Deleted session: [cyan]{session_id}[/cyan]")
             else:
@@ -337,7 +322,7 @@ class ClaudeCLI:
             if not session_id:
                 _print_error("Session ID is required for 'show' action.")
                 return
-            messages: List[Message] = await manager.get_messages(session_id)
+            messages: list[Message] = await manager.get_messages(session_id)
             if not messages:
                 _print_warning(f"Session [cyan]{session_id}[/cyan] has no messages.")
             else:
@@ -352,15 +337,17 @@ class ClaudeCLI:
                 _print_error("Session ID is required for 'export' action.")
                 return
             output_format_str: str = kwargs.get("format", "markdown")
-            output_file: Optional[str] = kwargs.get("output")
-            
+            output_file: str | None = kwargs.get("output")
+
             try:
                 content: str = await manager.export_session(session_id, output_format_str)
 
                 if output_file:
                     with open(output_file, "w") as f:
                         f.write(content)
-                    _print_success(f"Session [cyan]{session_id}[/cyan] exported to [green]{output_file}[/green] in {output_format_str} format.")
+                    _print_success(
+                        f"Session [cyan]{session_id}[/cyan] exported to [green]{output_file}[/green] in {output_format_str} format."
+                    )
                 else:
                     _print(content)
             except ValueError as e:
@@ -373,7 +360,9 @@ class ClaudeCLI:
             point: int = int(kwargs.get("point", -1))
             try:
                 new_id: str = await manager.branch_session(session_id, point)
-                _print_success(f"Branched session [cyan]{session_id}[/cyan] to new session: [cyan]{new_id}[/cyan] at message point {point}.")
+                _print_success(
+                    f"Branched session [cyan]{session_id}[/cyan] to new session: [cyan]{new_id}[/cyan] at message point {point}."
+                )
             except ValueError as e:
                 _print_error(str(e))
 
@@ -381,14 +370,16 @@ class ClaudeCLI:
             if not session_id:
                 _print_error("Target session ID is required for 'merge' action.")
                 return
-            other_id: Optional[str] = kwargs.get("other")
+            other_id: str | None = kwargs.get("other")
             if not other_id:
                 _print_error("Source session ID (--other) is required for 'merge' action.")
                 return
             strategy: str = kwargs.get("strategy", "append")
             try:
                 await manager.merge_sessions(session_id, other_id, strategy)
-                _print_success(f"Merged session [cyan]{other_id}[/cyan] into [cyan]{session_id}[/cyan] using '{strategy}' strategy.")
+                _print_success(
+                    f"Merged session [cyan]{other_id}[/cyan] into [cyan]{session_id}[/cyan] using '{strategy}' strategy."
+                )
             except ValueError as e:
                 _print_error(str(e))
 
@@ -472,7 +463,7 @@ class ClaudeCLI:
         _print(f"Model: [cyan]{model or 'default'}[/cyan]")
         _print("")
 
-        times: List[float] = []
+        times: list[float] = []
         options: ClaifOptions = ClaifOptions(model=model, cache=False, no_retry=no_retry)
 
         for i in range(iterations):
@@ -536,13 +527,15 @@ class ClaudeCLI:
         from claif_cla.install import install_claude
 
         _print("Attempting to install Claude provider...")
-        result: Dict[str, Any] = install_claude()
+        result: dict[str, Any] = install_claude()
 
         if result.get("installed"):
             _print_success("Claude provider installed successfully!")
             _print_success("You can now use the 'claude' command from anywhere.")
-            _print("\nTo ensure the 'claude' command is always available, add the installation directory to your system's PATH. For most Unix-like systems, you can add the following line to your shell's profile file (e.g., ~/.bashrc, ~/.zshrc, or ~/.profile):\n")
-            _print(f"  export PATH=\"{result.get("install_dir", "~/.local/bin")}:$PATH\"")
+            _print(
+                "\nTo ensure the 'claude' command is always available, add the installation directory to your system's PATH. For most Unix-like systems, you can add the following line to your shell's profile file (e.g., ~/.bashrc, ~/.zshrc, or ~/.profile):\n"
+            )
+            _print(f'  export PATH="{result.get("install_dir", "~/.local/bin")}:$PATH"')
             _print("\nAfter adding, run 'source ~/.bashrc' (or your respective profile file) to apply the changes.")
         else:
             error_msg: str = result.get("message", "Unknown installation error.")
@@ -566,7 +559,7 @@ class ClaudeCLI:
         from claif_cla.install import uninstall_claude
 
         _print("Attempting to uninstall Claude provider...")
-        result: Dict[str, Any] = uninstall_claude()
+        result: dict[str, Any] = uninstall_claude()
 
         if result.get("uninstalled"):
             _print_success("Claude provider uninstalled successfully!")
@@ -587,13 +580,15 @@ class ClaudeCLI:
         directory is included in the system's PATH.
         """
         import shutil
+
         from claif.common.install import find_executable, get_install_location
+
         from claif_cla.install import get_claude_status
 
         _print("\n[bold underline]Claude Provider Status[/bold underline]")
 
         # Get installation status from claif_cla.install
-        status_info: Dict[str, Any] = get_claude_status()
+        status_info: dict[str, Any] = get_claude_status()
         install_dir: Path = get_install_location()
 
         if status_info.get("installed"):
@@ -699,7 +694,7 @@ class ClaudeCLI:
             command: The command string (e.g., '/help', '/clear').
             session_id: The ID of the current session.
         """
-        parts: List[str] = command.split(maxsplit=1)
+        parts: list[str] = command.split(maxsplit=1)
         cmd: str = parts[0].lower()
         args: str = parts[1] if len(parts) > 1 else ""
         manager: SessionManager = await self._get_session_manager()
@@ -710,9 +705,15 @@ class ClaudeCLI:
             _print("  [cyan]/clear[/cyan] - Clear the terminal screen.")
             _print("  [cyan]/save[/cyan] - Save the current session to disk.")
             _print("  [cyan]/history[/cyan] - Show the full message history of the current session.")
-            _print("  [cyan]/model <name>[/cyan] - Change the model for the current session (e.g., /model claude-3-opus-20240229). (Not yet fully implemented)")
-            _print("  [cyan]/system <prompt>[/cyan] - Set a new system prompt for the current session. (Not yet fully implemented)")
-            _print("  [cyan]/branch [point][/cyan] - Create a new session branched from the current one at a specific message point.")
+            _print(
+                "  [cyan]/model <name>[/cyan] - Change the model for the current session (e.g., /model claude-3-opus-20240229). (Not yet fully implemented)"
+            )
+            _print(
+                "  [cyan]/system <prompt>[/cyan] - Set a new system prompt for the current session. (Not yet fully implemented)"
+            )
+            _print(
+                "  [cyan]/branch [point][/cyan] - Create a new session branched from the current one at a specific message point."
+            )
             _print("  [cyan]/merge <other_session_id> [strategy][/cyan] - Merge another session into the current one.")
 
         elif cmd == "/clear":
@@ -726,7 +727,7 @@ class ClaudeCLI:
                 _print_error(str(e))
 
         elif cmd == "/history":
-            messages: List[Message] = await manager.get_messages(session_id)
+            messages: list[Message] = await manager.get_messages(session_id)
             if not messages:
                 _print_warning(f"Session [cyan]{session_id}[/cyan] has no history.")
             else:
@@ -738,7 +739,9 @@ class ClaudeCLI:
         elif cmd == "/model":
             if args:
                 # TODO: Implement actual model switching logic within the session manager or options.
-                _print_warning(f"Model switching to '{args}' not yet fully implemented. This will only affect the current query options.")
+                _print_warning(
+                    f"Model switching to '{args}' not yet fully implemented. This will only affect the current query options."
+                )
                 # Example of how you might update options for subsequent queries:
                 # self.config.set_provider_option(Provider.CLAUDE, "model", args)
             else:
@@ -747,7 +750,9 @@ class ClaudeCLI:
         elif cmd == "/system":
             if args:
                 # TODO: Implement actual system prompt setting logic within the session manager or options.
-                _print_warning(f"Setting system prompt to '{args}' not yet fully implemented. This will only affect the current query options.")
+                _print_warning(
+                    f"Setting system prompt to '{args}' not yet fully implemented. This will only affect the current query options."
+                )
                 # Example of how you might update options for subsequent queries:
                 # self.config.set_provider_option(Provider.CLAUDE, "system_prompt", args)
             else:
@@ -768,13 +773,15 @@ class ClaudeCLI:
             if len(args_parts) < 1:
                 _print_error("Source session ID required. Usage: /merge <other_session_id> [strategy]")
                 return
-            
+
             other_session_id: str = args_parts[0]
             strategy: str = args_parts[1] if len(args_parts) > 1 else "append"
 
             try:
                 await manager.merge_sessions(session_id, other_session_id, strategy)
-                _print_success(f"Merged session [cyan]{other_session_id}[/cyan] into [cyan]{session_id}[/cyan] using '{strategy}' strategy.")
+                _print_success(
+                    f"Merged session [cyan]{other_session_id}[/cyan] into [cyan]{session_id}[/cyan] using '{strategy}' strategy."
+                )
             except ValueError as e:
                 _print_error(f"Merge failed: {e}. Usage: /merge <other_session_id> [strategy]")
             except Exception as e:

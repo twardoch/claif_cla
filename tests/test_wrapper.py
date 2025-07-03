@@ -7,12 +7,9 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from claif.common.types import ClaifOptions, ProviderError, TextBlock
-from claif.common.errors import ClaifTimeoutError
 from claif.common.config import Config
 from claif.common.errors import ClaifTimeoutError
-from claif.common.errors import ClaifTimeoutError
-from claif.common.errors import ClaifTimeoutError
+from claif.common.types import ClaifOptions, ProviderError, TextBlock
 from claude_code_sdk import Message as ClaudeMessage
 
 from claif_cla.wrapper import ClaudeWrapper, ResponseCache
@@ -206,7 +203,8 @@ class TestClaudeWrapper:
 
         assert len(messages) == 2
         assert messages[0].role == "user"
-        assert len(messages[1].content) == 1 and messages[1].content[0].text == "response"
+        assert len(messages[1].content) == 1
+        assert messages[1].content[0].text == "response"
 
         # Should not call base_query
         wrapper.cache.get.assert_called_once_with("test prompt", options)
@@ -221,7 +219,10 @@ class TestClaudeWrapper:
         wrapper.cache.set = Mock()
 
         # Mock base_query
-        mock_messages = [ClaudeMessage(role="user", content="test"), ClaudeMessage(role="assistant", content="response")]
+        mock_messages = [
+            ClaudeMessage(role="user", content="test"),
+            ClaudeMessage(role="assistant", content="response"),
+        ]
 
         async def mock_base_query(prompt, opts):
             for msg in mock_messages:
@@ -290,7 +291,8 @@ class TestClaudeWrapper:
                 messages.append(msg)
 
         assert len(messages) == 1
-        assert len(messages[0].content) == 1 and messages[0].content[0].text == "success"
+        assert len(messages[0].content) == 1
+        assert messages[0].content[0].text == "success"
         assert call_count == 3
 
     @pytest.mark.asyncio
