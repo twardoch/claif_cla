@@ -6,39 +6,14 @@ from pathlib import Path
 from loguru import logger
 
 # Import common install functionality
-try:
-    from claif.common.utils import prompt_tool_configuration
-    from claif.install import (
-        bundle_all_tools,
-        ensure_bun_installed,
-        get_install_location,
-        install_npm_package_globally,
-        uninstall_tool,
-    )
-except ImportError:
-    # Fallback if claif package not available
-    logger.warning("claif package not found, using local implementations")
-    from claif_cla.install_fallback import (
-        bundle_all_tools,
-        ensure_bun_installed,
-        get_install_location,
-        install_npm_package_globally,
-        uninstall_tool,
-    )
-
-    def prompt_tool_configuration(tool_name: str, config_commands: List[str]) -> None:
-        """
-        Fallback implementation for tool configuration prompt when `claif.common` is not available.
-
-        This function is a no-op and serves as a placeholder.
-
-        Args:
-            tool_name: The name of the tool being configured.
-            config_commands: A list of commands that could be used for configuration.
-        """
-        logger.debug(f"Fallback prompt_tool_configuration called for {tool_name}. Commands: {config_commands}")
-        # In a non-interactive fallback, we just log that configuration would be prompted.
-        pass
+from claif.common.utils import prompt_tool_configuration
+from claif.install import (
+    bundle_all_tools,
+    ensure_bun_installed,
+    get_install_location,
+    install_npm_package_globally,
+    uninstall_tool,
+)
 
 
 def install_claude_bundled(install_dir: Path, dist_dir: Path) -> bool:

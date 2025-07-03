@@ -7,9 +7,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Union
+import copy
 
 import aiofiles
-from claif.common import Message, MessageRole, TextBlock, ToolUseBlock, ToolResultBlock, ToolUseBlock, ToolResultBlock
+from claif.common import Message, MessageRole, TextBlock, ToolUseBlock, ToolResultBlock
 from loguru import logger
 
 
@@ -82,8 +83,13 @@ class Session:
         """
         Converts the Session object to a dictionary for serialization.
 
-        Handles serialization of `Message` objects, including their potentially
-        complex `content` structure (string or list of `ContentBlock`s).
+        This method serializes the session's data, including its messages,
+        metadata, and checkpoints, into a dictionary format suitable for JSON
+        storage. It specifically handles the serialization of `Message` objects,
+        converting their `content` attribute (which can be a string or a list
+        of `ContentBlock` instances) into a serializable representation.
+        Nested `ContentBlock` types like `ToolUseBlock` and `ToolResultBlock`
+        are also converted to their dictionary representations.
 
         Returns:
             A dictionary representation of the session.
@@ -137,14 +143,16 @@ class Session:
         """
         Creates a Session object from a dictionary representation.
 
-        Handles deserialization of `Message` objects, including their potentially
-        complex `content` structure.
+        This class method deserializes a dictionary (typically loaded from JSON)
+        back into a `Session` object. It reconstructs `Message` objects and their
+        `content` (including nested `ContentBlock` types like `TextBlock`,
+        `ToolUseBlock`, and `ToolResultBlock`) from their dictionary representations.
 
         Args:
-            data: A dictionary containing session data.
+            data: A dictionary containing the serialized session data.
 
         Returns:
-            A `Session` object.
+            A `Session` object reconstructed from the provided dictionary.
         """
         created_at_str: str = data["created_at"]
         # Handle 'Z' suffix for UTC timezone
@@ -308,22 +316,25 @@ class SessionManager:
             session.metadata["template"] = template_name
             session.metadata["system_prompt"] = template.get("system", "")
 
+            import copy
             for msg_data in template.get("initial_messages", []):
-                # Assuming initial_messages in templates are already in Message format or easily convertible
-                # If they are dicts, they need to be converted to Message objects
-                if isinstance(msg_data, Message):
-                    session.add_message(msg_data)
+                # Deepcopy the message data to ensure that modifications to the session's messages
+                # do not affect the original template messages.
+                msg_data_copy = copy.deepcopy(msg_data)
+                
+                if isinstance(msg_data_copy, Message):
+                    session.add_message(msg_data_copy)
                 else:
                     # Attempt to convert dict to Message, assuming basic structure
                     try:
-                        role = MessageRole(msg_data.get("role", "user"))
-                        content = msg_data.get("content", "")
+                        role = MessageRole(msg_data_copy.get("role", "user"))
+                        content = msg_data_copy.get("content", "")
                         if isinstance(content, list):
                             # Assuming content list contains dicts that can be converted to TextBlock
                             content = [TextBlock(text=b.get("text", "")) for b in content if isinstance(b, dict)]
                         session.add_message(Message(role=role, content=content))
                     except Exception as e:
-                        logger.warning(f"Could not convert template message {msg_data} to Message object: {e}")
+                        logger.warning(f"Could not convert template message {msg_data_copy} to Message object: {e}")
 
         self.active_sessions[session_id] = session
         await self.save_session(session_id)

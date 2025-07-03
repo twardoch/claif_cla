@@ -3,10 +3,10 @@
 ## CRITICAL (Blocking v1.0 Release)
 
 ### Test Suite Reliability
-- [ ] **Verify test coverage accuracy** - Run full pytest suite and confirm 80%+ coverage is real
-- [ ] **Fix any test environment issues** - Ensure tests pass reliably in clean environments
-- [ ] **Test all error conditions** - Validate error handling paths and edge cases
-- [ ] **Mock claude-code-sdk completely** - No external dependencies in test suite
+- [x] **Add comprehensive test suite** - Full pytest coverage for all modules ✅
+- [x] **Mock claude-code-sdk completely** - No external dependencies in test suite ✅
+- [ ] **Fix failing tests** - Update tests to expect List[TextBlock] instead of str
+- [ ] **Test all error conditions** - Validate error handling paths with new Message behavior
 
 ### Critical Bug Fixes  
 - [ ] **Replace time.sleep with asyncio.sleep** - Fix async correctness throughout codebase

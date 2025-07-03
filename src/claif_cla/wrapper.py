@@ -28,35 +28,7 @@ from tenacity import (
 from claif_cla import query as base_query
 
 
-"""Enhanced wrapper for Claude with caching and error handling."""
 
-import asyncio
-import hashlib
-import json
-import time
-from collections.abc import AsyncIterator
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-
-from claif.common import (
-    ClaifOptions,
-    ClaifTimeoutError,
-    Config,
-    ProviderError,
-)
-from claude_code import ClaudeCodeClient
-from claude_code.code_tools import CodeToolFactory
-from claude_code_sdk import Message as ClaudeMessage, TextBlock as ClaudeTextBlock, ToolUseBlock as ClaudeToolUseBlock, ToolResultBlock as ClaudeToolResultBlock
-from loguru import logger
-from tenacity import (
-    AsyncRetrying,
-    RetryError,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
-
-from claif_cla import query as base_query
 
 
 class ResponseCache:
