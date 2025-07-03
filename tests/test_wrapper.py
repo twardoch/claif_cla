@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from claif.common.types import ClaifOptions, ClaifTimeoutError, Config, ProviderError, TextBlock
+from claude_code_sdk import Message as ClaudeMessage
 
 from claif_cla.wrapper import ClaudeWrapper, ResponseCache
 
@@ -192,7 +193,7 @@ class TestClaudeWrapper:
         cached_messages = [{"role": "user", "content": "test"}, {"role": "assistant", "content": "response"}]
 
         wrapper.cache.get = Mock(return_value=cached_messages)
-        wrapper._dict_to_message = Mock(side_effect=lambda d: Mock(role=d["role"], content=d["content"]))
+        wrapper._dict_to_message = Mock(side_effect=lambda d: ClaudeMessage(role=d["role"], content=d["content"]))
 
         messages = []
         async for msg in wrapper.query("test prompt", options):
@@ -215,7 +216,7 @@ class TestClaudeWrapper:
         wrapper.cache.set = Mock()
 
         # Mock base_query
-        mock_messages = [Mock(role="user", content="test"), Mock(role="assistant", content="response")]
+        mock_messages = [ClaudeMessage(role="user", content="test"), ClaudeMessage(role="assistant", content="response")]
 
         async def mock_base_query(prompt, opts):
             for msg in mock_messages:
@@ -240,7 +241,7 @@ class TestClaudeWrapper:
         """Test query without caching."""
         options = ClaifOptions(cache=False)
 
-        mock_messages = [Mock(role="assistant", content="response")]
+        mock_messages = [ClaudeMessage(role="assistant", content="response")]
 
         async def mock_base_query(prompt, opts):
             for msg in mock_messages:
@@ -273,7 +274,7 @@ class TestClaudeWrapper:
             if call_count < 3:
                 msg = "Temporary error"
                 raise Exception(msg)
-            yield Mock(role="assistant", content="success")
+            yield ClaudeMessage(role="assistant", content="success")
 
         with (
             patch("claif_cla.wrapper.base_query", side_effect=mock_base_query),
