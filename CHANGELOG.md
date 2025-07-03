@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-01-03
+## [Unreleased] - 2025-07-03
+
+### Fixed
+- **Test Infrastructure Stabilization**: Resolved critical test failures blocking v1.0 release
+  - Fixed Mock objects in `test_wrapper.py` to use real ClaudeMessage instances for proper auto-conversion testing
+  - Updated `_dict_to_message` Mock to handle Message class auto-conversion from string to List[TextBlock]
+  - Verified all tests now pass with the Message class behavior working as designed
+- **SDK Import Error Handling**: Enhanced robustness for missing claude_code_sdk dependencies
+  - Added comprehensive try/except blocks in `__init__.py` and `wrapper.py`
+  - Implemented mock classes for all SDK types when claude_code_sdk is unavailable
+  - Provides clear warning messages but allows development without SDK installed
+  - Created fallback implementations for AssistantMessage, ClaudeMessage, UserMessage, etc.
+
+### Verified
+- **Async Patterns**: Confirmed no time.sleep usage - already using asyncio.sleep correctly throughout codebase
+- **Resource Management**: Validated no memory leaks or hanging processes in session management
+- **Message Auto-conversion**: Verified string to List[TextBlock] conversion works correctly as designed
 
 ### Added
 - **Comprehensive Test Suite**: Implemented pytest-based test infrastructure with 80%+ coverage target
