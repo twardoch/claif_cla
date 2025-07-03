@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from claif.common.types import ClaifOptions, ClaifTimeoutError, Config, ProviderError, Provider, TextBlock
+from claif.common import ClaifOptions, ClaifTimeoutError, Config, ProviderError, Provider
+from claif.common.types import TextBlock
 from tenacity import RetryError
 
 # Since we're mocking claude_code in conftest.py, we can import this
@@ -34,8 +35,11 @@ class TestResponseCacheComprehensive:
         # Verify it exists using get method
         assert cache.get("test prompt", options) == messages
         
-    def test_cache_expiration(self, temp_dir):
+    @pytest.mark.asyncio
+    async def test_cache_expiration(self, temp_dir):
         """Test cache expiration based on TTL."""
+        import asyncio
+        
         cache = ResponseCache(temp_dir, ttl=1)  # 1 second TTL
         
         options = ClaifOptions(model="claude-3", cache=True)
@@ -48,7 +52,7 @@ class TestResponseCacheComprehensive:
         assert cache.get("test", options) == messages
         
         # Wait for expiration
-        time.sleep(1.1)
+        await asyncio.sleep(1.1)
         
         # Should return None after expiration
         assert cache.get("test", options) is None

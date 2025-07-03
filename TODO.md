@@ -8,7 +8,7 @@
 - [ ] **Fix failing tests** - Update tests to expect List[TextBlock] instead of str
 - [ ] **Test all error conditions** - Validate error handling paths with new Message behavior
 
-### Critical Bug Fixes  
+### Critical Bug Fixes
 - [ ] **Replace time.sleep with asyncio.sleep** - Fix async correctness throughout codebase
 - [ ] **Fix SDK import issues** - Resolve `claude_code` dependency problems
 - [ ] **Improve error handling** - Clear, actionable error messages for all failure modes
@@ -103,7 +103,7 @@ Explicitly excluding to maintain focus:
 - [ ] Add connection validation and retry logic
 - [ ] Resource cleanup on errors
 
-### session.py (HIGH)  
+### session.py (HIGH)
 - [ ] Atomic file operations for data safety
 - [ ] Handle concurrent access properly
 - [ ] Session validation and corruption recovery
@@ -111,7 +111,7 @@ Explicitly excluding to maintain focus:
 
 ### approval.py (MEDIUM)
 - [ ] Validate strategy configurations
-- [ ] Better logging of approval decisions  
+- [ ] Better logging of approval decisions
 - [ ] Safe defaults for security
 - [ ] Performance optimization
 

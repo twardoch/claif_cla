@@ -16,11 +16,13 @@ from loguru import logger
 @pytest.fixture(autouse=True)
 def mock_loguru_logger():
     """Mock loguru.logger to prevent log output during tests."""
-    with patch.object(logger, "debug") as mock_debug,
-         patch.object(logger, "info") as mock_info,
-         patch.object(logger, "warning") as mock_warning,
-         patch.object(logger, "error") as mock_error,
-         patch.object(logger, "exception") as mock_exception:
+    with (
+        patch.object(logger, "debug") as mock_debug,
+        patch.object(logger, "info") as mock_info,
+        patch.object(logger, "warning") as mock_warning,
+        patch.object(logger, "error") as mock_error,
+        patch.object(logger, "exception") as mock_exception,
+    ):
         yield {
             "debug": mock_debug,
             "info": mock_info,
@@ -28,6 +30,19 @@ def mock_loguru_logger():
             "error": mock_error,
             "exception": mock_exception,
         }
+
+
+# Mock message classes for backward compatibility
+class MockUserMessage:
+    def __init__(self, content):
+        self.role = "user"
+        self.content = content
+
+
+class MockAssistantMessage:
+    def __init__(self, content):
+        self.role = "assistant"
+        self.content = content
 
 
 @pytest.fixture
@@ -46,8 +61,7 @@ def mock_claude_query():
 
     async def _mock_query(prompt: str, options: ClaifOptions) -> AsyncIterator[Message]:
         yield Message(role=MessageRole.USER, content=prompt)
-        yield Message(role=MessageRole.ASSISTANT, content=[TextBlock(text="Mock response from Claude")]
-        )
+        yield Message(role=MessageRole.ASSISTANT, content=[TextBlock(text="Mock response from Claude")])
 
     return _mock_query
 
@@ -60,7 +74,6 @@ def mock_claude_query():
 mock_claude_code_sdk = MagicMock()
 mock_claude_code_sdk.Message = Message
 mock_claude_code_sdk.TextBlock = TextBlock
-# Add other necessary mocks for claude_code_sdk types if they are used directly
 
 # Mock claude_code
 mock_claude_code = MagicMock()
@@ -73,8 +86,6 @@ sys.modules["claude_code_sdk"] = mock_claude_code_sdk
 sys.modules["claude_code"] = mock_claude_code
 sys.modules["claude_code.code_tools"] = mock_claude_code.code_tools
 
-
-# Remaining fixtures
 
 @pytest.fixture
 def temp_dir() -> Iterator[Path]:
@@ -208,147 +219,3 @@ def mock_config():
             }
         }
     )
-
-# Removed mock_claif_common fixture - using real claif.common module
-
-
-@pytest.fixture
-def temp_dir() -> Iterator[Path]:
-    """Create a temporary directory for tests."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
-
-
-@pytest.fixture
-def mock_claude_response() -> list[Any]:
-    """Mock Claude response messages."""
-    return [
-        MockUserMessage(content="Test prompt"),
-        MockAssistantMessage(
-            content=[
-                Mock(text="This is a test response"),
-                Mock(text="With multiple parts"),
-            ]
-        ),
-    ]
-
-
-@pytest.fixture
-def mock_claif_options() -> ClaifOptions:
-    """Create mock Claif options."""
-    return ClaifOptions(
-        model="claude-3-opus-20240229",
-        temperature=0.7,
-        max_tokens=1000,
-        system_prompt="You are a helpful assistant",
-        timeout=30,
-    )
-
-
-@pytest.fixture
-def mock_claude_query():
-    """Mock the claude_query function."""
-
-    async def _mock_query(prompt: str, options: Any) -> AsyncIterator[Any]:
-        # Yield mock messages
-        yield MockUserMessage(content=prompt)
-        yield MockAssistantMessage(
-            content=[
-                Mock(text="Mock response"),
-            ]
-        )
-
-    return _mock_query
-
-
-@pytest.fixture
-def mock_install_claude() -> Mock:
-    """Mock the install_claude function."""
-    return Mock(return_value={"installed": True, "failed": []})
-
-
-@pytest.fixture
-def mock_session_dir(temp_dir: Path) -> Path:
-    """Create a mock session directory."""
-    session_dir = temp_dir / "sessions"
-    session_dir.mkdir(parents=True, exist_ok=True)
-    return session_dir
-
-
-@pytest.fixture
-def mock_session_file(mock_session_dir: Path) -> tuple[Path, str]:
-    """Create a mock session file."""
-    session_id = "test-session-123"
-    session_data = {
-        "id": session_id,
-        "created_at": "2024-01-01T00:00:00Z",
-        "messages": [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi there!"}],
-        "metadata": {},
-        "checkpoints": [],
-    }
-
-    session_file = mock_session_dir / f"{session_id}.json"
-    with open(session_file, "w") as f:
-        json.dump(session_data, f)
-
-    return session_file, session_id
-
-
-@pytest.fixture
-def mock_approval_strategy() -> Mock:
-    """Mock approval strategy."""
-    strategy = Mock()
-    strategy.should_approve.return_value = True
-    strategy.get_description.return_value = "Mock Strategy"
-    return strategy
-
-
-@pytest.fixture
-def mock_install_result() -> dict[str, Any]:
-    """Mock installation result."""
-    return {"installed": ["claude"], "failed": [], "message": "Success"}
-
-
-@pytest.fixture
-def mock_subprocess_run() -> Mock:
-    """Mock subprocess.run for install tests."""
-    mock = Mock()
-    mock.return_value.returncode = 0
-    mock.return_value.stdout = "Installation successful"
-    mock.return_value.stderr = ""
-    return mock
-
-
-@pytest.fixture(autouse=True)
-def mock_logger():
-    """Mock logger to prevent log output during tests."""
-    with patch("claif_cla.logger"):
-        yield
-
-
-@pytest.fixture
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture
-def mock_config():
-    """Create a mock configuration for tests."""
-    from claif.common import Config, Provider
-    
-    return Config(
-        default_provider=Provider.CLAUDE,
-        verbose=False,
-        providers={
-            "claude": {
-                "enabled": True,
-                "model": "claude-3-sonnet",
-                "extra": {"api_key": "test-key"}
-            }
-        }
-    )
-
-# Removed mock_claif_common fixture - using real claif.common module
