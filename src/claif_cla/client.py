@@ -71,6 +71,9 @@ class ClaudeClient:
                         # Fallback for unknown block types
                         converted_content.append(TextBlock(text=str(block)))
                 content = converted_content
+                # If content is empty list, create default TextBlock
+                if not content:
+                    content = [TextBlock(text=str(claude_message.content))]
             else:
                 content = [TextBlock(text=str(content))]
             
