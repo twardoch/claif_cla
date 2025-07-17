@@ -208,9 +208,20 @@ def event_loop():
 def mock_config():
     """Create a mock configuration for tests."""
     from claif.common import Config, Provider
+    from claif.common.config import ProviderConfig
 
     return Config(
         default_provider=Provider.CLAUDE,
         verbose=False,
-        providers={"claude": {"enabled": True, "model": "claude-3-sonnet", "extra": {"api_key": "test-key"}}},
+        providers={
+            Provider.CLAUDE: ProviderConfig(
+                enabled=True,
+                model="claude-3-sonnet",
+                api_key_env="ANTHROPIC_API_KEY",
+                timeout=120,
+                extra={"api_key": "test-key"}
+            )
+        },
+        cache_ttl=3600,
+        retry_config={"count": 3, "delay": 1.0, "backoff": 2.0}
     )

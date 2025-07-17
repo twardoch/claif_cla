@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from claif.common.config import Config
-from claif.common.errors import ClaifTimeoutError
-from claif.common.types import ClaifOptions, ProviderError, TextBlock
+from claif.common.errors import ClaifTimeoutError, ProviderError
+from claif.common.types import ClaifOptions, TextBlock
 from claude_code_sdk import Message as ClaudeMessage
 
 from claif_cla.wrapper import ClaudeWrapper, ResponseCache
@@ -172,10 +172,21 @@ class TestClaudeWrapper:
     @pytest.fixture
     def mock_config(self):
         """Create mock config."""
+        from claif.common import Provider
+        from claif.common.config import ProviderConfig
+        
         config = Mock(spec=Config)
-        config.api_key = "test-key"
         config.cache_ttl = 3600
         config.retry_config = {"count": 3, "delay": 1.0, "backoff": 2.0}
+        config.providers = {
+            Provider.CLAUDE: ProviderConfig(
+                enabled=True,
+                model="claude-3-sonnet",
+                api_key_env="ANTHROPIC_API_KEY",
+                timeout=120,
+                extra={"api_key": "test-key"}
+            )
+        }
         return config
 
     @pytest.fixture
@@ -228,7 +239,7 @@ class TestClaudeWrapper:
             for msg in mock_messages:
                 yield msg
 
-        with patch("claif_cla.wrapper.base_query", side_effect=mock_base_query):
+        with patch.object(wrapper, "_base_query", side_effect=mock_base_query):
             messages = []
             async for msg in wrapper.query("test prompt", options):
                 messages.append(msg)
@@ -253,7 +264,7 @@ class TestClaudeWrapper:
             for msg in mock_messages:
                 yield msg
 
-        with patch("claif_cla.wrapper.base_query", side_effect=mock_base_query):
+        with patch.object(wrapper, "_base_query", side_effect=mock_base_query):
             messages = []
             async for msg in wrapper.query("test prompt", options):
                 messages.append(msg)
@@ -283,7 +294,7 @@ class TestClaudeWrapper:
             yield ClaudeMessage(role="assistant", content="success")
 
         with (
-            patch("claif_cla.wrapper.base_query", side_effect=mock_base_query),
+            patch.object(wrapper, "_base_query", side_effect=mock_base_query),
             patch("asyncio.sleep"),
         ):  # Skip actual delays
             messages = []
@@ -306,7 +317,7 @@ class TestClaudeWrapper:
             msg = "Persistent error"
             raise Exception(msg)
 
-        with patch("claif_cla.wrapper.base_query", side_effect=mock_base_query), patch("asyncio.sleep"):
+        with patch.object(wrapper, "_base_query", side_effect=mock_base_query), patch("asyncio.sleep"):
             with pytest.raises(ProviderError) as exc_info:
                 async for _ in wrapper.query("test prompt", options):
                     pass
@@ -323,7 +334,7 @@ class TestClaudeWrapper:
             msg = "Request timed out"
             raise TimeoutError(msg)
 
-        with patch("claif_cla.wrapper.base_query", side_effect=mock_base_query), patch("asyncio.sleep"):
+        with patch.object(wrapper, "_base_query", side_effect=mock_base_query), patch("asyncio.sleep"):
             with pytest.raises(ClaifTimeoutError) as exc_info:
                 async for _ in wrapper.query("test prompt", options):
                     pass
@@ -347,7 +358,7 @@ class TestClaudeWrapper:
             raise Exception(msg)
 
         with (
-            patch("claif_cla.wrapper.base_query", side_effect=mock_base_query),
+            patch.object(wrapper, "_base_query", side_effect=mock_base_query),
             patch("asyncio.sleep", side_effect=mock_sleep),
         ):
             try:

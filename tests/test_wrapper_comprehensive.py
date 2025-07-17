@@ -125,7 +125,7 @@ class TestClaudeWrapperComprehensive:
         # Mock the base query
         mock_messages = [Mock(role="assistant", content="Cached response")]
 
-        with patch("claif_cla.wrapper.base_query") as mock_base_query:
+        with patch.object(wrapper, "_base_query") as mock_base_query:
 
             async def mock_query_gen(*args, **kwargs):
                 for msg in mock_messages:
@@ -159,7 +159,7 @@ class TestClaudeWrapperComprehensive:
 
         call_count = 0
 
-        with patch("claif_cla.wrapper.base_query") as mock_base_query:
+        with patch.object(wrapper, "_base_query") as mock_base_query:
 
             async def mock_query_with_errors(*args, **kwargs):
                 nonlocal call_count
@@ -189,7 +189,7 @@ class TestClaudeWrapperComprehensive:
 
         options = ClaifOptions(provider=Provider.CLAUDE)
 
-        with patch("claif_cla.wrapper.base_query") as mock_base_query:
+        with patch.object(wrapper, "_base_query") as mock_base_query:
 
             async def mock_query_quota_error(*args, **kwargs):
                 msg = "quota exceeded"
@@ -214,7 +214,7 @@ class TestClaudeWrapperComprehensive:
             timeout=1,  # 1 second timeout
         )
 
-        with patch("claif_cla.wrapper.base_query") as mock_base_query:
+        with patch.object(wrapper, "_base_query") as mock_base_query:
 
             async def mock_slow_query(*args, **kwargs):
                 await asyncio.sleep(2)  # Longer than timeout
@@ -233,7 +233,7 @@ class TestClaudeWrapperComprehensive:
 
         # Verify client cleanup is called on error
         with patch.object(wrapper.client, "close") as mock_close:
-            with patch("claif_cla.wrapper.base_query") as mock_base_query:
+            with patch.object(wrapper, "_base_query") as mock_base_query:
 
                 async def mock_error_query(*args, **kwargs):
                     msg = "Test error"
@@ -256,7 +256,7 @@ class TestClaudeWrapperComprehensive:
 
         options = ClaifOptions(provider=Provider.CLAUDE)
 
-        with patch("claif_cla.wrapper.base_query") as mock_base_query:
+        with patch.object(wrapper, "_base_query") as mock_base_query:
 
             async def mock_query_gen(prompt, *args, **kwargs):
                 await asyncio.sleep(0.1)  # Simulate some delay
@@ -294,7 +294,7 @@ class TestClaudeWrapperEdgeCases:
         """Test handling of empty responses."""
         wrapper = ClaudeWrapper(mock_config)
 
-        with patch("claif_cla.wrapper.base_query") as mock_base_query:
+        with patch.object(wrapper, "_base_query") as mock_base_query:
 
             async def mock_empty_query(*args, **kwargs):
                 # Don't yield anything
@@ -314,7 +314,7 @@ class TestClaudeWrapperEdgeCases:
         """Test handling of malformed messages."""
         wrapper = ClaudeWrapper(mock_config)
 
-        with patch("claif_cla.wrapper.base_query") as mock_base_query:
+        with patch.object(wrapper, "_base_query") as mock_base_query:
 
             async def mock_malformed_query(*args, **kwargs):
                 # Yield various malformed messages
