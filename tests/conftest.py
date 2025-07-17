@@ -219,9 +219,9 @@ def mock_config():
                 model="claude-3-sonnet",
                 api_key_env="ANTHROPIC_API_KEY",
                 timeout=120,
-                extra={"api_key": "test-key"}
+                extra={"api_key": "test-key"},
             )
         },
         cache_ttl=3600,
-        retry_config={"count": 3, "delay": 1.0, "backoff": 2.0}
+        retry_config={"count": 3, "delay": 1.0, "backoff": 2.0},
     )

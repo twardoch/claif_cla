@@ -225,18 +225,20 @@ class ConditionalStrategy(ApprovalStrategy):
                 if isinstance(constraints, dict) and any(key in constraints for key in ["min", "max", "allowed"]):
                     # Missing parameter with constraints, but allow if it's just a max constraint
                     if "max" in constraints and len(constraints) == 1:
-                        logger.debug(f"ConditionalStrategy: Missing optional param {param_name} for {tool_name}, allowing")
+                        logger.debug(
+                            f"ConditionalStrategy: Missing optional param {param_name} for {tool_name}, allowing"
+                        )
                         continue
                     logger.debug(f"ConditionalStrategy: Missing required param {param_name} for {tool_name}")
                     return False
-                elif isinstance(constraints, list):
+                if isinstance(constraints, list):
                     # Missing parameter with allowed list
                     logger.debug(f"ConditionalStrategy: Missing required param {param_name} for {tool_name}")
                     return False
                 continue
 
             param_value = tool_input[param_name]
-            
+
             # Handle constraints as either dict or list
             if isinstance(constraints, list):
                 # Allowed values as list format
@@ -247,27 +249,37 @@ class ConditionalStrategy(ApprovalStrategy):
                 # Check allowed values
                 if "allowed" in constraints:
                     if param_value not in constraints["allowed"]:
-                        logger.debug(f"ConditionalStrategy: {param_name}={param_value} not in allowed list for {tool_name}")
+                        logger.debug(
+                            f"ConditionalStrategy: {param_name}={param_value} not in allowed list for {tool_name}"
+                        )
                         return False
 
                 # Check max value
                 if "max" in constraints:
                     try:
                         if float(param_value) > constraints["max"]:
-                            logger.debug(f"ConditionalStrategy: {param_name}={param_value} exceeds max {constraints['max']} for {tool_name}")
+                            logger.debug(
+                                f"ConditionalStrategy: {param_name}={param_value} exceeds max {constraints['max']} for {tool_name}"
+                            )
                             return False
                     except (ValueError, TypeError):
-                        logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to max for {tool_name}")
+                        logger.debug(
+                            f"ConditionalStrategy: Cannot compare {param_name}={param_value} to max for {tool_name}"
+                        )
                         return False
 
                 # Check min value
                 if "min" in constraints:
                     try:
                         if float(param_value) < constraints["min"]:
-                            logger.debug(f"ConditionalStrategy: {param_name}={param_value} below min {constraints['min']} for {tool_name}")
+                            logger.debug(
+                                f"ConditionalStrategy: {param_name}={param_value} below min {constraints['min']} for {tool_name}"
+                            )
                             return False
                     except (ValueError, TypeError):
-                        logger.debug(f"ConditionalStrategy: Cannot compare {param_name}={param_value} to min for {tool_name}")
+                        logger.debug(
+                            f"ConditionalStrategy: Cannot compare {param_name}={param_value} to min for {tool_name}"
+                        )
                         return False
 
         logger.debug(f"ConditionalStrategy: All conditions met for {tool_name}")
@@ -298,35 +310,35 @@ def create_approval_strategy(strategy_type: str, config: dict[str, Any] | None =
     match strategy_type:
         case "allow_all":
             return AllowAll()
-        
+
         case "deny_all":
             return DenyAll()
-        
+
         case "allow_list":
             allowed_tools = config.get("allowed_tools", [])
             return AllowList(allowed_tools)
-        
+
         case "deny_list":
             denied_tools = config.get("denied_tools", [])
             return DenyList(denied_tools)
-        
+
         case "pattern":
             patterns = config.get("patterns", [])
             deny = config.get("deny", False)
             return Pattern(patterns, deny=deny)
-        
+
         case "interactive":
             auto_approve_safe = config.get("auto_approve_safe", True)
             return Interactive(auto_approve_safe=auto_approve_safe)
-        
+
         case "conditional":
             conditions = config.get("conditions", {})
             return ConditionalStrategy(conditions)
-        
+
         case "composite":
             strategies_config = config.get("strategies", [])
             require_all = config.get("require_all", False)
-            
+
             # Recursively create sub-strategies
             strategies = []
             for strategy_config in strategies_config:
@@ -334,8 +346,9 @@ def create_approval_strategy(strategy_type: str, config: dict[str, Any] | None =
                 strategy_config_inner = strategy_config.get("config", {})
                 if strategy_type_inner:
                     strategies.append(create_approval_strategy(strategy_type_inner, strategy_config_inner))
-            
+
             return Composite(strategies, require_all=require_all)
-        
+
         case _:
-            raise ValueError(f"Unknown strategy type: {strategy_type}")
+            msg = f"Unknown strategy type: {strategy_type}"
+            raise ValueError(msg)

@@ -1,0 +1,452 @@
+# this_file: .github/workflows/ci.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  actions: read
+  checks: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "latest"
+
+jobs:
+  # Code quality and security checks
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          source .venv/bin/activate
+          uv pip install ".[dev,test]"
+
+      - name: Run Ruff format check
+        run: |
+          source .venv/bin/activate
+          ruff format --check --respect-gitignore src/claif_cla tests
+
+      - name: Run Ruff lint
+        run: |
+          source .venv/bin/activate
+          ruff check --output-format=github src/claif_cla tests
+
+      - name: Run MyPy type checking
+        run: |
+          source .venv/bin/activate
+          mypy src/claif_cla
+
+      - name: Security check with Bandit
+        run: |
+          source .venv/bin/activate
+          uv pip install bandit[toml]
+          bandit -r src/claif_cla -f json -o bandit-report.json || true
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: bandit-report.json
+
+  # Test matrix across Python versions and platforms
+  test:
+    name: Tests
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-suffix: ${{ matrix.os }}-${{ matrix.python-version }}
+
+      - name: Install dependencies (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          uv venv --python ${{ matrix.python-version }}
+          source .venv/bin/activate
+          uv pip install ".[test]"
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          uv venv --python ${{ matrix.python-version }}
+          .venv\Scripts\activate
+          uv pip install ".[test]"
+
+      - name: Run tests with coverage (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          python -m pytest tests/ \
+            --cov=src/claif_cla \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-config=pyproject.toml \
+            --junit-xml=pytest-results.xml \
+            -v
+
+      - name: Run tests with coverage (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          python -m pytest tests/ --cov=src/claif_cla --cov-report=xml --cov-report=term-missing --cov-config=pyproject.toml --junit-xml=pytest-results.xml -v
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.python-version }}-${{ matrix.platform }}
+          path: |
+            pytest-results.xml
+            coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  # Build package
+  build:
+    name: Build Package
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Install build dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          source .venv/bin/activate
+          uv pip install build hatchling hatch-vcs
+
+      - name: Build distributions
+        run: |
+          source .venv/bin/activate
+          python -m build --outdir dist
+
+      - name: Verify distributions
+        run: |
+          ls -la dist/
+          # Check if both wheel and source distribution exist
+          test -n "$(find dist -name '*.whl')" || (echo "Wheel file missing" && exit 1)
+          test -n "$(find dist -name '*.tar.gz')" || (echo "Source distribution missing" && exit 1)
+
+      - name: Test package installation
+        run: |
+          # Test installation in a fresh environment
+          uv venv test_env
+          source test_env/bin/activate
+          uv pip install dist/*.whl
+          python -c "import claif_cla; print(f'Successfully imported claif_cla version {claif_cla.__version__}')"
+          python -m claif_cla.cli --help
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-files
+          path: dist/
+          retention-days: 30
+
+  # Build binaries (executables)
+  build-binaries:
+    name: Build Binaries
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+          - os: macos-latest
+            platform: macos
+            arch: x86_64
+          - os: macos-latest
+            platform: macos
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Install PyInstaller
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          source .venv/bin/activate || .venv\Scripts\activate
+          uv pip install ".[dev]" pyinstaller
+
+      - name: Create binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          pyinstaller --onefile --name claif-cla-${{ matrix.platform }}-${{ matrix.arch }} \
+            --distpath dist-binary \
+            --hidden-import claif_cla \
+            --add-data "src/claif_cla:claif_cla" \
+            -m claif_cla.cli
+
+      - name: Create binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          pyinstaller --onefile --name claif-cla-${{ matrix.platform }}-${{ matrix.arch }}.exe --distpath dist-binary --hidden-import claif_cla --add-data "src/claif_cla;claif_cla" -m claif_cla.cli
+
+      - name: Test binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          ./dist-binary/claif-cla-${{ matrix.platform }}-${{ matrix.arch }} --help
+
+      - name: Test binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          ./dist-binary/claif-cla-${{ matrix.platform }}-${{ matrix.arch }}.exe --help
+
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist-binary/
+          retention-days: 30
+
+  # Docker build and test
+  docker:
+    name: Docker Build & Test
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build --target test -t claif_cla:test .
+          docker build --target production -t claif_cla:latest .
+
+      - name: Test Docker image
+        run: |
+          docker run --rm claif_cla:test
+          docker run --rm claif_cla:latest --help
+
+      - name: Save Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker save claif_cla:latest | gzip > claif_cla-docker.tar.gz
+
+      - name: Upload Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: claif_cla-docker.tar.gz
+          retention-days: 30
+
+  # Release to TestPyPI on tags
+  test-release:
+    name: Test Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, build-binaries, docker]
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/claif_cla
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-files
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
+          skip-existing: true
+
+      - name: Test installation from TestPyPI
+        run: |
+          pip install uv
+          sleep 60  # Wait for package to be available
+          uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ claif_cla
+          python -c "import claif_cla; print(f'Successfully imported claif_cla version {claif_cla.__version__}')"
+
+  # Release to PyPI
+  release:
+    name: Release to PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test-release
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/claif_cla
+    
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-files
+          path: dist/
+
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: binaries/
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+            binaries/*
+          generate_release_notes: true
+          make_latest: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Cleanup old artifacts
+  cleanup:
+    name: Cleanup
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, build-binaries, docker]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Delete old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+            
+            // Keep only the most recent 5 artifacts of each type
+            const artifactsByName = artifacts.data.artifacts.reduce((acc, artifact) => {
+              if (!acc[artifact.name]) acc[artifact.name] = [];
+              acc[artifact.name].push(artifact);
+              return acc;
+            }, {});
+            
+            for (const [name, artifacts] of Object.entries(artifactsByName)) {
+              if (artifacts.length > 5) {
+                const toDelete = artifacts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(5);
+                for (const artifact of toDelete) {
+                  await github.rest.actions.deleteArtifact({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    artifact_id: artifact.id,
+                  });
+                }
+              }
+            }

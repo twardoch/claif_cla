@@ -20,7 +20,7 @@ class TestClaudeWrapperErrorHandling:
         """Create mock config."""
         from claif.common import Provider
         from claif.common.config import ProviderConfig
-        
+
         config = Mock()
         config.cache_ttl = 3600
         config.retry_config = {"count": 3, "delay": 1.0, "backoff": 2.0}
@@ -30,7 +30,7 @@ class TestClaudeWrapperErrorHandling:
                 model="claude-3-sonnet",
                 api_key_env="ANTHROPIC_API_KEY",
                 timeout=120,
-                extra={"api_key": "test-key"}
+                extra={"api_key": "test-key"},
             )
         }
         return config
@@ -49,18 +49,13 @@ class TestClaudeWrapperErrorHandling:
     async def test_message_to_dict_with_tool_use_block(self, wrapper):
         """Test message serialization with ToolUseBlock."""
         from claif_cla.wrapper import ClaudeMessage, ClaudeToolUseBlock
-        
+
         # Create a message with ToolUseBlock
-        tool_block = ClaudeToolUseBlock(
-            type="tool_use",
-            id="test-id",
-            name="test_tool",
-            input={"param": "value"}
-        )
+        tool_block = ClaudeToolUseBlock(type="tool_use", id="test-id", name="test_tool", input={"param": "value"})
         message = ClaudeMessage(role="user", content=[tool_block])
-        
+
         result = wrapper._message_to_dict(message)
-        
+
         assert result["role"] == "user"
         assert len(result["content"]) == 1
         assert result["content"][0]["type"] == "tool_use"
@@ -71,18 +66,15 @@ class TestClaudeWrapperErrorHandling:
     @pytest.mark.asyncio
     async def test_message_to_dict_with_tool_result_block(self, wrapper):
         """Test message serialization with ToolResultBlock."""
-        from claif_cla.wrapper import ClaudeMessage, ClaudeToolResultBlock, ClaudeTextBlock
-        
+        from claif_cla.wrapper import ClaudeMessage, ClaudeTextBlock, ClaudeToolResultBlock
+
         # Create a message with ToolResultBlock
         text_block = ClaudeTextBlock(type="text", text="Tool output")
-        tool_result_block = ClaudeToolResultBlock(
-            type="tool_result",
-            content=[text_block]
-        )
+        tool_result_block = ClaudeToolResultBlock(type="tool_result", content=[text_block])
         message = ClaudeMessage(role="assistant", content=[tool_result_block])
-        
+
         result = wrapper._message_to_dict(message)
-        
+
         assert result["role"] == "assistant"
         assert len(result["content"]) == 1
         assert result["content"][0]["type"] == "tool_result"
@@ -94,14 +86,14 @@ class TestClaudeWrapperErrorHandling:
     async def test_message_to_dict_with_unknown_block_type(self, wrapper):
         """Test message serialization with unknown block type."""
         from claif_cla.wrapper import ClaudeMessage
-        
+
         # Create a message with unknown block type
         unknown_block = Mock()
         unknown_block.type = "unknown"
         message = ClaudeMessage(role="user", content=[unknown_block])
-        
+
         result = wrapper._message_to_dict(message)
-        
+
         assert result["role"] == "user"
         assert len(result["content"]) == 1
         assert result["content"][0]["type"] == "unknown"
@@ -111,22 +103,15 @@ class TestClaudeWrapperErrorHandling:
     async def test_dict_to_message_with_tool_use_block(self, wrapper):
         """Test message deserialization with ToolUseBlock."""
         from claif.common.types import MessageRole
-        
+
         # Create dict with ToolUseBlock
         message_dict = {
             "role": MessageRole.USER,
-            "content": [
-                {
-                    "type": "tool_use",
-                    "id": "test-id",
-                    "name": "test_tool",
-                    "input": {"param": "value"}
-                }
-            ]
+            "content": [{"type": "tool_use", "id": "test-id", "name": "test_tool", "input": {"param": "value"}}],
         }
-        
+
         result = wrapper._dict_to_message(message_dict)
-        
+
         assert result.role == MessageRole.USER
         assert len(result.content) == 1
         block = result.content[0]
@@ -139,22 +124,15 @@ class TestClaudeWrapperErrorHandling:
     async def test_dict_to_message_with_tool_result_block(self, wrapper):
         """Test message deserialization with ToolResultBlock."""
         from claif.common.types import MessageRole
-        
+
         # Create dict with ToolResultBlock
         message_dict = {
             "role": MessageRole.ASSISTANT,
-            "content": [
-                {
-                    "type": "tool_result",
-                    "content": [
-                        {"type": "text", "text": "Tool output"}
-                    ]
-                }
-            ]
+            "content": [{"type": "tool_result", "content": [{"type": "text", "text": "Tool output"}]}],
         }
-        
+
         result = wrapper._dict_to_message(message_dict)
-        
+
         assert result.role == MessageRole.ASSISTANT
         assert len(result.content) == 1
         block = result.content[0]
@@ -167,35 +145,27 @@ class TestClaudeWrapperErrorHandling:
     async def test_dict_to_message_with_unknown_block_type(self, wrapper):
         """Test message deserialization with unknown block type."""
         from claif.common.types import MessageRole
-        
+
         # Create dict with unknown block type
-        message_dict = {
-            "role": MessageRole.USER,
-            "content": [
-                {
-                    "type": "unknown",
-                    "data": "unknown data"
-                }
-            ]
-        }
-        
+        message_dict = {"role": MessageRole.USER, "content": [{"type": "unknown", "data": "unknown data"}]}
+
         result = wrapper._dict_to_message(message_dict)
-        
+
         assert result.role == MessageRole.USER
         assert len(result.content) == 1
         # Unknown blocks should be converted to TextBlocks
-        assert hasattr(result.content[0], 'text')
+        assert hasattr(result.content[0], "text")
         assert "unknown data" in result.content[0].text
 
     @pytest.mark.asyncio
     async def test_base_query_with_mock_response(self, wrapper):
         """Test the base query method with mock response."""
         options = ClaifOptions(model="claude-3-sonnet")
-        
+
         messages = []
         async for message in wrapper._base_query("Test prompt", options):
             messages.append(message)
-        
+
         assert len(messages) == 1
         assert "Mock response to: Test prompt" in messages[0].content
 
@@ -203,21 +173,23 @@ class TestClaudeWrapperErrorHandling:
     async def test_query_with_connection_error_retry(self, wrapper):
         """Test query with connection error and retry."""
         options = ClaifOptions(model="claude-3-sonnet")
-        
+
         # Mock _base_query to fail twice then succeed
         call_count = 0
+
         async def mock_base_query(prompt, opts):
             nonlocal call_count
             call_count += 1
             if call_count <= 2:
-                raise ConnectionError("Network error")
+                msg = "Network error"
+                raise ConnectionError(msg)
             yield Mock(role="assistant", content="Success after retry")
-        
+
         with patch.object(wrapper, "_base_query", side_effect=mock_base_query):
             messages = []
             async for msg in wrapper.query("Test prompt", options):
                 messages.append(msg)
-        
+
         assert len(messages) == 1
         assert call_count == 3  # Should have retried twice
 
@@ -225,12 +197,13 @@ class TestClaudeWrapperErrorHandling:
     async def test_query_with_timeout_error(self, wrapper):
         """Test query with timeout error."""
         options = ClaifOptions(model="claude-3-sonnet")
-        
+
         # Mock _base_query to always timeout
         async def mock_base_query(prompt, opts):
-            raise asyncio.TimeoutError("Request timeout")
+            msg = "Request timeout"
+            raise asyncio.TimeoutError(msg)
             yield  # Never reached
-        
+
         with patch.object(wrapper, "_base_query", side_effect=mock_base_query):
             with pytest.raises(ClaifTimeoutError):
                 messages = []
@@ -241,51 +214,52 @@ class TestClaudeWrapperErrorHandling:
     async def test_query_with_quota_error(self, wrapper):
         """Test query with quota error."""
         options = ClaifOptions(model="claude-3-sonnet")
-        
+
         # Mock _base_query to always fail with quota error
         async def mock_base_query(prompt, opts):
-            raise Exception("API quota exceeded")
+            msg = "API quota exceeded"
+            raise Exception(msg)
             yield  # Never reached
-        
+
         with patch.object(wrapper, "_base_query", side_effect=mock_base_query):
             with pytest.raises(ProviderError) as exc_info:
                 messages = []
                 async for msg in wrapper.query("Test prompt", options):
                     messages.append(msg)
-            
+
             assert "quota" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_query_with_no_retry_option(self, wrapper):
         """Test query with no_retry option."""
         options = ClaifOptions(model="claude-3-sonnet", no_retry=True)
-        
+
         # Mock _base_query to fail once
         async def mock_base_query(prompt, opts):
-            raise Exception("Single failure")
+            msg = "Single failure"
+            raise Exception(msg)
             yield  # Never reached
-        
-        with patch.object(wrapper, "_base_query", side_effect=mock_base_query):
-            with pytest.raises(ProviderError):
-                messages = []
-                async for msg in wrapper.query("Test prompt", options):
-                    messages.append(msg)
+
+        with patch.object(wrapper, "_base_query", side_effect=mock_base_query), pytest.raises(ProviderError):
+            messages = []
+            async for msg in wrapper.query("Test prompt", options):
+                messages.append(msg)
 
     @pytest.mark.asyncio
     async def test_query_with_zero_retry_count(self, wrapper):
         """Test query with zero retry count."""
         options = ClaifOptions(model="claude-3-sonnet", retry_count=0)
-        
+
         # Mock _base_query to fail once
         async def mock_base_query(prompt, opts):
-            raise Exception("Single failure")
+            msg = "Single failure"
+            raise Exception(msg)
             yield  # Never reached
-        
-        with patch.object(wrapper, "_base_query", side_effect=mock_base_query):
-            with pytest.raises(ProviderError):
-                messages = []
-                async for msg in wrapper.query("Test prompt", options):
-                    messages.append(msg)
+
+        with patch.object(wrapper, "_base_query", side_effect=mock_base_query), pytest.raises(ProviderError):
+            messages = []
+            async for msg in wrapper.query("Test prompt", options):
+                messages.append(msg)
 
     @pytest.mark.asyncio
     async def test_cache_configuration(self, wrapper):

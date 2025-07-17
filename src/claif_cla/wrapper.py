@@ -217,6 +217,7 @@ class ClaudeWrapper:
         """
         self.config: Config = config
         from claif.common.types import Provider
+
         claude_config = self.config.providers.get(Provider.CLAUDE)
         api_key = claude_config.api_key_env if claude_config else None
         self.client: ClaudeCodeClient = ClaudeCodeClient(api_key=api_key)
@@ -238,17 +239,17 @@ class ClaudeWrapper:
     ) -> AsyncIterator[ClaudeMessage]:
         """
         Base query method that directly calls the claude_code_sdk client.
-        
+
         Args:
             prompt: The input prompt string for the Claude model.
             options: Optional `ClaifOptions` to override default behavior for this query.
-            
+
         Yields:
             An asynchronous iterator of `ClaudeMessage` objects representing the LLM's response.
         """
         if options is None:
             options = ClaifOptions()
-            
+
         # For now, create a mock response for testing
         # In a real implementation, this would call self.client.query()
         if CLAUDE_CODE_AVAILABLE:
