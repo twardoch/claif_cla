@@ -50,12 +50,12 @@ class ClaudeClient:
     def _claude_to_claif_message(self, claude_message) -> Message:
         """Convert ClaudeMessage to Claif Message format."""
         from claif.common import MessageRole, TextBlock
-        
+
         # Handle mock objects that don't have proper attributes
-        if hasattr(claude_message, 'role') and hasattr(claude_message, 'content'):
+        if hasattr(claude_message, "role") and hasattr(claude_message, "content"):
             role = claude_message.role if claude_message.role else MessageRole.ASSISTANT
             content = claude_message.content if claude_message.content else []
-            
+
             # If content is a string, wrap it in TextBlock
             if isinstance(content, str):
                 content = [TextBlock(text=content)]
@@ -63,7 +63,7 @@ class ClaudeClient:
                 # Convert content blocks to TextBlocks
                 converted_content = []
                 for block in content:
-                    if hasattr(block, 'text'):
+                    if hasattr(block, "text"):
                         converted_content.append(TextBlock(text=block.text))
                     elif isinstance(block, str):
                         converted_content.append(TextBlock(text=block))
@@ -76,16 +76,15 @@ class ClaudeClient:
                     content = [TextBlock(text=str(claude_message.content))]
             else:
                 content = [TextBlock(text=str(content))]
-            
+
             return Message(role=role, content=content)
-        else:
-            # Fallback for malformed messages
-            return Message(role=MessageRole.ASSISTANT, content=[TextBlock(text=str(claude_message))])
+        # Fallback for malformed messages
+        return Message(role=MessageRole.ASSISTANT, content=[TextBlock(text=str(claude_message))])
 
     async def query(
         self,
         prompt: str,
-        options: Optional[ClaifOptions] = None,
+        options: ClaifOptions | None = None,
     ) -> AsyncIterator[Message]:
         """
         Sends a query to the Claude CLI and yields messages.
@@ -113,7 +112,6 @@ class ClaudeClient:
                 yield self._claude_to_claif_message(claude_message)
         except Exception as e:
             logger.error(f"Claude query failed: {e}")
-            msg = f"Claude query failed: {e}"
             raise ProviderError(provider="claude", message=str(e)) from e
 
     async def is_available(self) -> bool:
@@ -140,13 +138,13 @@ def get_client(config: Any) -> ClaudeClient:
     return _client
 
 
-async def query(prompt: str, options: Optional[ClaifOptions] = None, config: Any = None) -> AsyncIterator[Message]:
+async def query(prompt: str, options: ClaifOptions | None = None, config: Any = None) -> AsyncIterator[Message]:
     """Module-level query function to access the singleton client."""
     from claif.common.config import load_config
-    
+
     if config is None:
         config = load_config()
-    
+
     client = get_client(config)
     async for msg in client.query(prompt, options):
         yield msg
