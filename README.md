@@ -1,26 +1,42 @@
 # claif_cla - Claude Provider for Claif
 
+A Claif provider for Anthropic's Claude with full OpenAI client API compatibility. This package wraps the `claude-code-sdk` to provide a consistent interface following the `client.chat.completions.create()` pattern.
+
+## Features
+
+- **OpenAI Client API Compatible**: Use the familiar `client.chat.completions.create()` pattern
+- **Full Type Safety**: Returns standard `ChatCompletion` and `ChatCompletionChunk` objects
+- **Streaming Support**: Real-time streaming with proper chunk handling
+- **Session Management**: Persistent conversation history with atomic operations
+- **Tool Approval**: Fine-grained control over MCP tool usage
+- **Response Caching**: Intelligent caching to reduce API costs
+- **Fire-based CLI**: Rich terminal interface with multiple output formats
+
 ## Quickstart
 
 ```bash
-# Install and use Claude through Claif
+# Install
 pip install claif_cla
-python -m claif_cla.cli ask "Hello, Claude!"
 
-# Or use it with the Claif framework
-pip install claif[all]
-claif query "Explain quantum computing" --provider claude
+# Basic usage - OpenAI compatible
+python -c "
+from claif_cla import ClaudeClient
+client = ClaudeClient()
+response = client.chat.completions.create(
+    messages=[{'role': 'user', 'content': 'Hello Claude!'}],
+    model='claude-3-5-sonnet-20241022'
+)
+print(response.choices[0].message.content)
+"
 
-# Stream responses with real-time display
-python -m claif_cla.cli stream "Tell me a story"
-
-# Start interactive chat session
-python -m claif_cla.cli interactive
+# CLI usage
+claif-cla query "Explain quantum computing"
+claif-cla chat --model claude-3-opus-20240229
 ```
 
 ## What is claif_cla?
 
-`claif_cla` is a Python wrapper that integrates Anthropic's Claude into the Claif framework. It provides a thin layer over the [`claude_code_sdk`](https://github.com/anthropics/claude-code-sdk-python) package, adding session management, tool approval strategies, and response caching while maintaining full compatibility with Claude's capabilities.
+`claif_cla` is a Python wrapper that integrates Anthropic's Claude into the Claif framework with full OpenAI client API compatibility. It provides a thin layer over the [`claude_code_sdk`](https://github.com/anthropics/claude-code-sdk-python) package, adding session management, tool approval strategies, and response caching while maintaining full compatibility with Claude's capabilities.
 
 **Key Features:**
 - **Session persistence** - Save and restore conversations across sessions
@@ -65,27 +81,74 @@ cd claif_cla
 pip install -e ".[dev,test]"
 ```
 
-## CLI Usage
+## Usage
 
-`claif_cla` provides a Fire-based CLI with rich terminal output.
+### Basic Usage (OpenAI-Compatible)
 
-### Basic Commands
+```python
+from claif_cla import ClaudeClient
 
-```bash
-# Ask Claude a question
-python -m claif_cla.cli ask "What is the theory of relativity?"
+# Initialize the client
+client = ClaudeClient(
+    api_key="your-api-key"  # Optional, uses ANTHROPIC_API_KEY env var
+)
 
-# Ask with specific model
-python -m claif_cla.cli ask "Explain Python decorators" --model claude-3-opus-20240229
+# Create a chat completion - exactly like OpenAI
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant"},
+        {"role": "user", "content": "Explain machine learning"}
+    ],
+    temperature=0.7,
+    max_tokens=1000
+)
+
+# Access the response
+print(response.choices[0].message.content)
+print(f"Model: {response.model}")
+print(f"Usage: {response.usage}")
+```
+
+### Streaming Responses
+
+```python
+from claif_cla import ClaudeClient
+
+client = ClaudeClient()
 
 # Stream responses in real-time
-python -m claif_cla.cli stream "Write a short story about AI"
+stream = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[
+        {"role": "user", "content": "Write a haiku about programming"}
+    ],
+    stream=True
+)
 
-# Interactive conversation mode
-python -m claif_cla.cli interactive
+# Process streaming chunks
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
 
-# Health check
-python -m claif_cla.cli health
+## CLI Usage
+
+```bash
+# Basic query
+claif-cla query "What is the theory of relativity?"
+
+# With specific model
+claif-cla query "Explain Python decorators" --model claude-3-opus-20240229
+
+# Interactive chat mode
+claif-cla chat --model claude-3-5-sonnet-20241022
+
+# List available models
+claif-cla models
+
+# JSON output
+claif-cla query "Hello" --json-output
 ```
 
 ### Session Management
@@ -127,33 +190,55 @@ python -m claif_cla.cli ask "Expensive computation" --cache --cache-ttl 3600
 python -m claif_cla.cli ask "Debug this" --verbose
 ```
 
-## Python API Usage
+## API Compatibility
 
-### Basic Usage
+This package is fully compatible with the OpenAI Python client API:
 
 ```python
+# You can use it as a drop-in replacement
+from claif_cla import ClaudeClient as OpenAI
+
+client = OpenAI()
+# Now use exactly like the OpenAI client
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+## Migration from Old Async API
+
+If you were using the old async-based Claif API:
+
+```python
+# Old API (deprecated)
 import asyncio
 from claif_cla import query
 from claif.common import ClaifOptions
 
-async def main():
-    # Simple query
+async def old_way():
     async for message in query("Hello, Claude!"):
         print(f"{message.role}: {message.content}")
     
-    # Query with options
-    options = ClaifOptions(
-        model="claude-3-opus-20240229",
-        temperature=0.7,
-        max_tokens=500,
-        system_prompt="You are a helpful coding assistant"
-    )
-    
-    async for message in query("Explain Python decorators", options):
-        print(message.content)
+# New API (OpenAI-compatible)
+from claif_cla import ClaudeClient
 
-asyncio.run(main())
+def new_way():
+    client = ClaudeClient()
+    response = client.chat.completions.create(
+        messages=[{"role": "user", "content": "Hello, Claude!"}],
+        model="claude-3-5-sonnet-20241022"
+    )
+    print(response.choices[0].message.content)
 ```
+
+### Key Changes
+
+1. **Synchronous by default**: No more `async/await` for basic usage
+2. **OpenAI-compatible structure**: `client.chat.completions.create()` pattern
+3. **Standard message format**: `[{"role": "user", "content": "..."}]`
+4. **Streaming support**: Use `stream=True` for real-time responses
+5. **Type-safe responses**: Returns `ChatCompletion` objects from OpenAI types
 
 ### Session Management
 

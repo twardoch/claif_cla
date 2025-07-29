@@ -1,11 +1,7 @@
 """Tests for CLI functionality."""
 
-import asyncio
-import json
-import sys
-from io import StringIO
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from claif.common import ClaifOptions, Message, MessageRole, ResponseMetrics

@@ -1,16 +1,7 @@
-from claif_cla.approval import STRATEGY_PRESETS, create_approval_strategy
-from claif_cla.cli import ClaudeCLI, main
-from claif_cla.install import get_claude_status, install_claude, is_claude_installed, uninstall_claude
-from claif_cla.session import SessionManager
+# this_file: claif_cla/src/claif_cla/__init__.py
+"""Claif provider for Anthropic Claude with OpenAI Responses API compatibility."""
 
-__all__ = [
-    "STRATEGY_PRESETS",
-    "ClaudeCLI",
-    "SessionManager",
-    "create_approval_strategy",
-    "get_claude_status",
-    "install_claude",
-    "is_claude_installed",
-    "main",
-    "uninstall_claude",
-]
+from claif_cla.__version__ import __version__
+from claif_cla.client import ClaudeClient
+
+__all__ = ["ClaudeClient", "__version__"]

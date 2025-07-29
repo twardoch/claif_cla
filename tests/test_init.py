@@ -1,6 +1,5 @@
 """Tests for claif_cla.__init__ module."""
 
-from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

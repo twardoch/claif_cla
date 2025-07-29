@@ -1,9 +1,7 @@
 """Comprehensive tests for claif_cla CLI module."""
 
-import asyncio
-import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from claif.common import ClaifOptions, Message, MessageRole, Provider

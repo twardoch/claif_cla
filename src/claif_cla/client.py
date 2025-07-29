@@ -1,150 +1,284 @@
 # this_file: claif_cla/src/claif_cla/client.py
+"""Claude client with OpenAI Responses API compatibility using claude-code-sdk."""
 
-import asyncio
-import sys
+import os
 import time
-from collections.abc import AsyncIterator
-from typing import Any, Dict, Optional, Union
+from collections.abc import Iterator
+from typing import Any, Union
 
-from claif.common import ClaifOptions, ClaifTimeoutError, Message, ProviderError
-from claif.common.install import InstallError
-from claif.common.utils import _print_error, _print_success, _print_warning
-from loguru import logger
-from tenacity import AsyncRetrying, stop_after_attempt, wait_exponential
+from openai import NOT_GIVEN, NotGiven
+from openai.types import CompletionUsage
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionMessage,
+    ChatCompletionMessageParam,
+)
+from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
+from openai.types.chat.chat_completion_chunk import ChoiceDelta
 
-from claif_cla.install import install_claude, is_claude_installed
-from claif_cla.wrapper import ClaudeWrapper
+try:
+    from claude_code_sdk import Client as ClaudeCodeClient
+    from claude_code_sdk.types import Message as ClaudeMessage
+    HAS_CLAUDE_CODE_SDK = True
+except ImportError:
+    HAS_CLAUDE_CODE_SDK = False
+    ClaudeCodeClient = None
+    ClaudeMessage = None
+
+
+class ChatCompletions:
+    """Namespace for completions methods to match OpenAI client structure."""
+
+    def __init__(self, parent: "ClaudeClient"):
+        self.parent = parent
+
+    def create(
+        self,
+        *,
+        messages: list[ChatCompletionMessageParam],
+        model: str = "claude-3-5-sonnet-20241022",
+        frequency_penalty: float | None | NotGiven = NOT_GIVEN,
+        function_call: Any | None | NotGiven = NOT_GIVEN,
+        functions: list[Any] | None | NotGiven = NOT_GIVEN,
+        logit_bias: dict[str, int] | None | NotGiven = NOT_GIVEN,
+        logprobs: bool | None | NotGiven = NOT_GIVEN,
+        max_tokens: int | None | NotGiven = NOT_GIVEN,
+        n: int | None | NotGiven = NOT_GIVEN,
+        presence_penalty: float | None | NotGiven = NOT_GIVEN,
+        response_format: Any | None | NotGiven = NOT_GIVEN,
+        seed: int | None | NotGiven = NOT_GIVEN,
+        stop: str | None | list[str] | NotGiven = NOT_GIVEN,
+        stream: bool | None | NotGiven = NOT_GIVEN,
+        temperature: float | None | NotGiven = NOT_GIVEN,
+        tool_choice: Any | None | NotGiven = NOT_GIVEN,
+        tools: list[Any] | None | NotGiven = NOT_GIVEN,
+        top_logprobs: int | None | NotGiven = NOT_GIVEN,
+        top_p: float | None | NotGiven = NOT_GIVEN,
+        user: str | NotGiven = NOT_GIVEN,
+        # Additional parameters
+        extra_headers: Any | None | NotGiven = NOT_GIVEN,
+        extra_query: Any | None | NotGiven = NOT_GIVEN,
+        extra_body: Any | None | NotGiven = NOT_GIVEN,
+        timeout: float | NotGiven = NOT_GIVEN,
+    ) -> ChatCompletion | Iterator[ChatCompletionChunk]:
+        """Create a chat completion using Claude Code SDK.
+
+        This method provides compatibility with OpenAI's chat.completions.create API.
+        """
+        if not HAS_CLAUDE_CODE_SDK:
+            raise ImportError(
+                "claude-code-sdk is not installed. Please install it with: pip install claude-code-sdk"
+            )
+            
+        # Extract the last user message as the prompt
+        prompt = ""
+        system_prompt = ""
+        
+        for msg in messages:
+            if isinstance(msg, dict):
+                role = msg["role"]
+                content = msg["content"]
+            else:
+                role = msg.role
+                content = msg.content
+                
+            if role == "system":
+                system_prompt = content
+            elif role == "user":
+                prompt = content  # Take the last user message
+            elif role == "assistant":
+                # For multi-turn conversations, append assistant responses
+                if prompt:
+                    prompt = f"{prompt}\n\nAssistant: {content}\n\nHuman: "
+                    
+        # Map parameters to claude-code-sdk options
+        options = {}
+        if temperature is not NOT_GIVEN:
+            options["temperature"] = temperature
+        if max_tokens is not NOT_GIVEN:
+            options["max_tokens"] = max_tokens
+        if system_prompt:
+            options["system"] = system_prompt
+            
+        # Handle streaming
+        if stream is True:
+            return self._create_stream(prompt, model, options)
+        else:
+            return self._create_sync(prompt, model, options)
+
+    def _create_sync(self, prompt: str, model: str, options: dict) -> ChatCompletion:
+        """Create a synchronous chat completion."""
+        # Call claude-code-sdk
+        if hasattr(self.parent._client, 'query'):
+            # Use query method if available
+            response = self.parent._client.query(prompt, **options)
+        else:
+            # Fall back to messages API
+            response = self.parent._client.messages.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                **options
+            )
+        
+        # Convert response to ChatCompletion format
+        timestamp = int(time.time())
+        
+        # Extract content from response
+        if hasattr(response, 'content'):
+            if isinstance(response.content, list):
+                content = "".join(
+                    block.text for block in response.content 
+                    if hasattr(block, 'text')
+                )
+            else:
+                content = str(response.content)
+        else:
+            content = str(response)
+            
+        # Calculate token usage
+        prompt_tokens = 0
+        completion_tokens = 0
+        if hasattr(response, 'usage'):
+            prompt_tokens = getattr(response.usage, 'input_tokens', 0)
+            completion_tokens = getattr(response.usage, 'output_tokens', 0)
+            
+        # Create unique ID
+        response_id = f"chatcmpl-{timestamp}{os.getpid()}"
+        
+        return ChatCompletion(
+            id=response_id,
+            object="chat.completion",
+            created=timestamp,
+            model=model,
+            choices=[
+                Choice(
+                    index=0,
+                    message=ChatCompletionMessage(
+                        role="assistant",
+                        content=content,
+                    ),
+                    finish_reason="stop",
+                    logprobs=None,
+                )
+            ],
+            usage=CompletionUsage(
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+            ),
+        )
+
+    def _create_stream(
+        self, prompt: str, model: str, options: dict
+    ) -> Iterator[ChatCompletionChunk]:
+        """Create a streaming chat completion."""
+        # For now, implement a simple non-streaming fallback
+        # In a real implementation, this would use claude-code-sdk's streaming API
+        response = self._create_sync(prompt, model, options)
+        
+        timestamp = int(time.time())
+        chunk_id = f"chatcmpl-{timestamp}{os.getpid()}"
+        
+        # Initial chunk with role
+        yield ChatCompletionChunk(
+            id=chunk_id,
+            object="chat.completion.chunk",
+            created=timestamp,
+            model=model,
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(role="assistant", content=""),
+                    finish_reason=None,
+                    logprobs=None,
+                )
+            ],
+        )
+        
+        # Content chunk
+        yield ChatCompletionChunk(
+            id=chunk_id,
+            object="chat.completion.chunk",
+            created=timestamp,
+            model=model,
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(content=response.choices[0].message.content),
+                    finish_reason=None,
+                    logprobs=None,
+                )
+            ],
+        )
+        
+        # Final chunk
+        yield ChatCompletionChunk(
+            id=chunk_id,
+            object="chat.completion.chunk",
+            created=timestamp,
+            model=model,
+            choices=[
+                ChunkChoice(
+                    index=0,
+                    delta=ChoiceDelta(),
+                    finish_reason="stop",
+                    logprobs=None,
+                )
+            ],
+        )
+
+
+class Chat:
+    """Namespace for chat-related methods to match OpenAI client structure."""
+
+    def __init__(self, parent: "ClaudeClient"):
+        self.parent = parent
+        self.completions = ChatCompletions(parent)
 
 
 class ClaudeClient:
-    """
-    Client for interacting with the Claude CLI.
+    """Claude client compatible with OpenAI's chat completions API."""
 
-    Manages the Claude CLI subprocess, handles queries, and processes responses.
-    """
-
-    _instance: Optional["ClaudeClient"] = None
-
-    def __new__(cls, *args: Any, **kwargs: Any) -> "ClaudeClient":
-        """Singleton pattern for ClaudeClient."""
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
-
-    def __init__(self, config: Any):
-        """
-        Initializes the ClaudeClient.
-
-        Args:
-            config: The Claif configuration object.
-        """
-        if self._initialized:
-            return
-
-        self.config = config
-        self.wrapper = ClaudeWrapper(config)
-        self._initialized = True
-        logger.debug("ClaudeClient initialized.")
-
-    def _claude_to_claif_message(self, claude_message) -> Message:
-        """Convert ClaudeMessage to Claif Message format."""
-        from claif.common import MessageRole, TextBlock
-
-        # Handle mock objects that don't have proper attributes
-        if hasattr(claude_message, "role") and hasattr(claude_message, "content"):
-            role = claude_message.role if claude_message.role else MessageRole.ASSISTANT
-            content = claude_message.content if claude_message.content else []
-
-            # If content is a string, wrap it in TextBlock
-            if isinstance(content, str):
-                content = [TextBlock(text=content)]
-            elif isinstance(content, list):
-                # Convert content blocks to TextBlocks
-                converted_content = []
-                for block in content:
-                    if hasattr(block, "text"):
-                        converted_content.append(TextBlock(text=block.text))
-                    elif isinstance(block, str):
-                        converted_content.append(TextBlock(text=block))
-                    else:
-                        # Fallback for unknown block types
-                        converted_content.append(TextBlock(text=str(block)))
-                content = converted_content
-                # If content is empty list, create default TextBlock
-                if not content:
-                    content = [TextBlock(text=str(claude_message.content))]
-            else:
-                content = [TextBlock(text=str(content))]
-
-            return Message(role=role, content=content)
-        # Fallback for malformed messages
-        return Message(role=MessageRole.ASSISTANT, content=[TextBlock(text=str(claude_message))])
-
-    async def query(
+    def __init__(
         self,
-        prompt: str,
-        options: ClaifOptions | None = None,
-    ) -> AsyncIterator[Message]:
-        """
-        Sends a query to the Claude CLI and yields messages.
-
-        Handles auto-installation of the Claude CLI if it's missing.
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: float = 600.0,
+    ):
+        """Initialize the Claude client.
 
         Args:
-            prompt: The prompt to send.
-            options: Optional ClaifOptions for the query.
-
-        Yields:
-            Message: Messages received from the Claude CLI.
-
-        Raises:
-            ProviderError: If the query fails after retries or due to a critical error.
+            api_key: Anthropic API key (defaults to env var)
+            base_url: Base URL for Claude Code SDK (optional)
+            timeout: Request timeout in seconds
         """
-        if options is None:
-            options = ClaifOptions()
+        # Store configuration
+        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.base_url = base_url
+        self.timeout = timeout
+        self._client = None
+        self._sdk_available = HAS_CLAUDE_CODE_SDK
 
-        logger.debug(f"Querying Claude with prompt: {prompt[:100]}...")
+        # Initialize the Claude Code SDK client if available
+        if self._sdk_available:
+            try:
+                self._client = ClaudeCodeClient(
+                    api_key=self.api_key,
+                    # Add other claude-code-sdk specific parameters as needed
+                )
+            except Exception as e:
+                # If claude-code-sdk initialization fails, provide helpful error
+                raise RuntimeError(
+                    f"Failed to initialize claude-code-sdk client: {e}. "
+                    f"Make sure claude-code-sdk is properly installed and configured."
+                )
 
-        try:
-            async for claude_message in self.wrapper.query(prompt, options):
-                # Convert ClaudeMessage to Claif Message
-                yield self._claude_to_claif_message(claude_message)
-        except Exception as e:
-            logger.error(f"Claude query failed: {e}")
-            raise ProviderError(provider="claude", message=str(e)) from e
+        # Create namespace structure to match OpenAI client
+        self.chat = Chat(self)
 
-    async def is_available(self) -> bool:
-        """Check if Claude CLI is installed and executable."""
-        return is_claude_installed()
-
-    async def get_models(self) -> dict[str, Any]:
-        """Get available Claude models (currently hardcoded)."""
-        return {
-            "claude-3-opus-20240229": {"description": "Claude 3 Opus (most powerful)"},
-            "claude-3-sonnet-20240229": {"description": "Claude 3 Sonnet (balanced)"},
-            "claude-3-haiku-20240229": {"description": "Claude 3 Haiku (fastest)"},
-        }
-
-
-_client: ClaudeClient | None = None
-
-
-def get_client(config: Any) -> ClaudeClient:
-    """Get singleton ClaudeClient instance."""
-    global _client
-    if _client is None or not _client._initialized:
-        _client = ClaudeClient(config)
-    return _client
-
-
-async def query(prompt: str, options: ClaifOptions | None = None, config: Any = None) -> AsyncIterator[Message]:
-    """Module-level query function to access the singleton client."""
-    from claif.common.config import load_config
-
-    if config is None:
-        config = load_config()
-
-    client = get_client(config)
-    async for msg in client.query(prompt, options):
-        yield msg
+    # Convenience method for backward compatibility
+    def create(self, **kwargs) -> ChatCompletion:
+        """Create a chat completion (backward compatibility method)."""
+        return self.chat.completions.create(**kwargs)

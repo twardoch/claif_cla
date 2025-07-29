@@ -5,8 +5,8 @@ import json
 import tempfile
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from typing import Any
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from claif.common import ClaifOptions, Message, MessageRole, TextBlock

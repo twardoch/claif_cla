@@ -1,7 +1,6 @@
 """Additional tests for wrapper error handling and edge cases."""
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from claif.common.errors import ClaifTimeoutError, ProviderError
@@ -201,7 +200,7 @@ class TestClaudeWrapperErrorHandling:
         # Mock _base_query to always timeout
         async def mock_base_query(prompt, opts):
             msg = "Request timeout"
-            raise asyncio.TimeoutError(msg)
+            raise TimeoutError(msg)
             yield  # Never reached
 
         with patch.object(wrapper, "_base_query", side_effect=mock_base_query):

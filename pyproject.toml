@@ -11,7 +11,7 @@
 #------------------------------------------------------------------------------
 [project]
 name = 'claif_cla' # Package name on PyPI
-description = 'CLAIF provider for Anthropic Claude Code CLI - seamless Claude integration for the Command-Line AI Framework' # Short description
+description = 'A Claif provider for Anthropic Claude, compatible with the OpenAI Responses API.' # Short description
 readme = 'README.md' # Path to README file
 requires-python = '>=3.10' # Minimum Python version
 keywords = [
@@ -23,10 +23,8 @@ keywords = [
     'cli',
     'command-line',
     'artificial-intelligence',
-    'claude-code',
-    'mcp',
-    'wrapper',
-    'framework',
+    'openai',
+    'responses-api',
 ] # Keywords for PyPI search
 dynamic = ["version"] # Fields set dynamically at build time
 
@@ -45,14 +43,13 @@ classifiers = [
 ]
 
 dependencies = [
-    "claif>=1.0.0",
-    "claude-code-sdk>=0.0.1",
-    "claude-code",
-    "fire>=0.7.0",
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+    "python-fire",
     "rich>=13.9.4",
     "loguru>=0.7.0",
-    "tenacity>=9.0.0",
-    "aiofiles>=23.2.1",
+    "httpx",
+    "pydantic>=2.0.0",
 ]
 
 # Author information

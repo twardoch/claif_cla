@@ -1,7 +1,5 @@
 """Tests for MCP tool approval strategies."""
 
-from unittest.mock import Mock, patch
-
 import pytest
 
 from claif_cla.approval import (
