@@ -4,7 +4,7 @@
 import os
 import time
 from collections.abc import Iterator
-from typing import Any, Union
+from typing import Any
 
 from openai import NOT_GIVEN, NotGiven
 from openai.types import CompletionUsage
@@ -21,6 +21,7 @@ from openai.types.chat.chat_completion_chunk import ChoiceDelta
 try:
     from claude_code_sdk import Client as ClaudeCodeClient
     from claude_code_sdk.types import Message as ClaudeMessage
+
     HAS_CLAUDE_CODE_SDK = True
 except ImportError:
     HAS_CLAUDE_CODE_SDK = False
@@ -68,14 +69,13 @@ class ChatCompletions:
         This method provides compatibility with OpenAI's chat.completions.create API.
         """
         if not HAS_CLAUDE_CODE_SDK:
-            raise ImportError(
-                "claude-code-sdk is not installed. Please install it with: pip install claude-code-sdk"
-            )
-            
+            msg = "claude-code-sdk is not installed. Please install it with: pip install claude-code-sdk"
+            raise ImportError(msg)
+
         # Extract the last user message as the prompt
         prompt = ""
         system_prompt = ""
-        
+
         for msg in messages:
             if isinstance(msg, dict):
                 role = msg["role"]
@@ -83,7 +83,7 @@ class ChatCompletions:
             else:
                 role = msg.role
                 content = msg.content
-                
+
             if role == "system":
                 system_prompt = content
             elif role == "user":
@@ -92,7 +92,7 @@ class ChatCompletions:
                 # For multi-turn conversations, append assistant responses
                 if prompt:
                     prompt = f"{prompt}\n\nAssistant: {content}\n\nHuman: "
-                    
+
         # Map parameters to claude-code-sdk options
         options = {}
         if temperature is not NOT_GIVEN:
@@ -101,52 +101,46 @@ class ChatCompletions:
             options["max_tokens"] = max_tokens
         if system_prompt:
             options["system"] = system_prompt
-            
+
         # Handle streaming
         if stream is True:
             return self._create_stream(prompt, model, options)
-        else:
-            return self._create_sync(prompt, model, options)
+        return self._create_sync(prompt, model, options)
 
     def _create_sync(self, prompt: str, model: str, options: dict) -> ChatCompletion:
         """Create a synchronous chat completion."""
         # Call claude-code-sdk
-        if hasattr(self.parent._client, 'query'):
+        if hasattr(self.parent._client, "query"):
             # Use query method if available
             response = self.parent._client.query(prompt, **options)
         else:
             # Fall back to messages API
             response = self.parent._client.messages.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                **options
+                model=model, messages=[{"role": "user", "content": prompt}], **options
             )
-        
+
         # Convert response to ChatCompletion format
         timestamp = int(time.time())
-        
+
         # Extract content from response
-        if hasattr(response, 'content'):
+        if hasattr(response, "content"):
             if isinstance(response.content, list):
-                content = "".join(
-                    block.text for block in response.content 
-                    if hasattr(block, 'text')
-                )
+                content = "".join(block.text for block in response.content if hasattr(block, "text"))
             else:
                 content = str(response.content)
         else:
             content = str(response)
-            
+
         # Calculate token usage
         prompt_tokens = 0
         completion_tokens = 0
-        if hasattr(response, 'usage'):
-            prompt_tokens = getattr(response.usage, 'input_tokens', 0)
-            completion_tokens = getattr(response.usage, 'output_tokens', 0)
-            
+        if hasattr(response, "usage"):
+            prompt_tokens = getattr(response.usage, "input_tokens", 0)
+            completion_tokens = getattr(response.usage, "output_tokens", 0)
+
         # Create unique ID
         response_id = f"chatcmpl-{timestamp}{os.getpid()}"
-        
+
         return ChatCompletion(
             id=response_id,
             object="chat.completion",
@@ -170,17 +164,15 @@ class ChatCompletions:
             ),
         )
 
-    def _create_stream(
-        self, prompt: str, model: str, options: dict
-    ) -> Iterator[ChatCompletionChunk]:
+    def _create_stream(self, prompt: str, model: str, options: dict) -> Iterator[ChatCompletionChunk]:
         """Create a streaming chat completion."""
         # For now, implement a simple non-streaming fallback
         # In a real implementation, this would use claude-code-sdk's streaming API
         response = self._create_sync(prompt, model, options)
-        
+
         timestamp = int(time.time())
         chunk_id = f"chatcmpl-{timestamp}{os.getpid()}"
-        
+
         # Initial chunk with role
         yield ChatCompletionChunk(
             id=chunk_id,
@@ -196,7 +188,7 @@ class ChatCompletions:
                 )
             ],
         )
-        
+
         # Content chunk
         yield ChatCompletionChunk(
             id=chunk_id,
@@ -212,7 +204,7 @@ class ChatCompletions:
                 )
             ],
         )
-        
+
         # Final chunk
         yield ChatCompletionChunk(
             id=chunk_id,
@@ -270,10 +262,11 @@ class ClaudeClient:
                 )
             except Exception as e:
                 # If claude-code-sdk initialization fails, provide helpful error
-                raise RuntimeError(
+                msg = (
                     f"Failed to initialize claude-code-sdk client: {e}. "
                     f"Make sure claude-code-sdk is properly installed and configured."
                 )
+                raise RuntimeError(msg)
 
         # Create namespace structure to match OpenAI client
         self.chat = Chat(self)

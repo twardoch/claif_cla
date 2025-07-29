@@ -190,6 +190,117 @@ python -m claif_cla.cli ask "Expensive computation" --cache --cache-ttl 3600
 python -m claif_cla.cli ask "Debug this" --verbose
 ```
 
+## Testing
+
+The `claif_cla` package includes comprehensive tests to ensure robust functionality:
+
+### Running Tests
+
+```bash
+# Install with test dependencies
+pip install -e ".[test]"
+
+# Run all tests
+uvx hatch test
+
+# Run specific test modules
+uvx hatch test -- tests/test_functional.py -v
+uvx hatch test -- tests/test_client.py -v
+
+# Run with coverage
+uvx hatch test -- --cov=src/claif_cla --cov-report=html
+```
+
+### Test Structure
+
+```
+tests/
+├── test_functional.py       # End-to-end functionality tests
+├── test_client.py          # Client API tests
+├── test_session.py         # Session management tests
+├── test_approval.py        # Tool approval strategy tests
+├── test_wrapper.py         # Caching and retry tests
+└── conftest.py             # Test fixtures and configuration
+```
+
+### Example Test Usage
+
+The functional tests demonstrate how to use `claif_cla` effectively:
+
+```python
+# Test basic query functionality
+def test_basic_query():
+    client = ClaudeClient(api_key="test-key")
+    
+    response = client.chat.completions.create(
+        model="claude-3-5-sonnet-20241022",
+        messages=[{"role": "user", "content": "Hello Claude"}]
+    )
+    
+    assert isinstance(response, ChatCompletion)
+    assert response.choices[0].message.role == "assistant"
+    assert len(response.choices[0].message.content) > 0
+
+# Test streaming responses
+def test_streaming():
+    client = ClaudeClient()
+    
+    stream = client.chat.completions.create(
+        model="claude-3-5-sonnet-20241022",
+        messages=[{"role": "user", "content": "Count to 3"}],
+        stream=True
+    )
+    
+    chunks = list(stream)
+    assert len(chunks) > 0
+    
+    # Reconstruct full message
+    content = "".join(
+        chunk.choices[0].delta.content or ""
+        for chunk in chunks
+        if chunk.choices and chunk.choices[0].delta.content
+    )
+    assert len(content) > 0
+
+# Test parameter passing
+def test_with_parameters():
+    client = ClaudeClient()
+    
+    response = client.chat.completions.create(
+        model="claude-3-5-sonnet-20241022",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Write a hello world function"}
+        ],
+        temperature=0.7,
+        max_tokens=100
+    )
+    
+    assert response.model == "claude-3-5-sonnet-20241022"
+    assert response.usage.total_tokens > 0
+```
+
+### Mock Testing for CI/CD
+
+The tests use comprehensive mocking to work in CI environments without requiring actual API keys:
+
+```python
+from unittest.mock import patch, MagicMock
+
+@patch("claif_cla.client.ClaudeCodeClient")
+def test_client_initialization(mock_client_class):
+    mock_client = MagicMock()
+    mock_client_class.return_value = mock_client
+    
+    client = ClaudeClient(api_key="test-key", timeout=300)
+    
+    # Verify proper initialization
+    mock_client_class.assert_called_once_with(
+        api_key="test-key", 
+        timeout=300
+    )
+```
+
 ## API Compatibility
 
 This package is fully compatible with the OpenAI Python client API:
