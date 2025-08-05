@@ -1,0 +1,38 @@
+/* Custom CSS for claif_cla documentation */
+
+:root {
+  --md-primary-fg-color: #1976d2;
+  --md-accent-fg-color: #2196f3;
+}
+
+/* Code blocks */
+.highlight {
+  border-radius: 4px;
+}
+
+/* Admonitions */
+.md-typeset .admonition.note {
+  border-color: var(--md-primary-fg-color);
+}
+
+/* Tables */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+}
+
+/* Custom classes for examples */
+.example-box {
+  background-color: var(--md-code-bg-color);
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.command-line {
+  background-color: #263238;
+  color: #fff;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+}
