@@ -1,0 +1,210 @@
+# this_file: src_docs/mkdocs.yml
+
+site_name: claif_cla Documentation
+site_description: A Claif provider for Anthropic Claude with OpenAI client API compatibility
+site_author: Adam Twardoch
+site_url: https://twardoch.github.io/claif_cla/
+
+# Repository
+repo_name: twardoch/claif_cla
+repo_url: https://github.com/twardoch/claif_cla
+edit_uri: edit/main/src_docs/md/
+
+# Copyright
+copyright: Copyright &copy; 2025 Adam Twardoch
+
+# Configuration
+theme:
+  name: material
+  language: en
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+  favicon: assets/favicon.ico
+  icon:
+    logo: material/robot-outline
+    repo: fontawesome/brands/github
+
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tooltips
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+  - minify:
+      minify_html: true
+
+# Customization
+extra:
+  homepage: https://github.com/twardoch/claif_cla
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/twardoch/claif_cla
+      name: GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/claif_cla/
+      name: PyPI
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      title: Page contents
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: twardoch
+      repo: claif_cla
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/mkdocs.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Page tree
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Basic Examples: getting-started/examples.md
+  - API Reference:
+    - OpenAI Compatibility: api/openai-compatibility.md
+    - Client Methods: api/client-methods.md
+    - Response Types: api/response-types.md
+    - Error Handling: api/error-handling.md
+  - Session Management:
+    - Overview: sessions/overview.md
+    - Creating Sessions: sessions/creating.md
+    - Managing Sessions: sessions/managing.md
+    - Exporting Sessions: sessions/exporting.md
+  - Tool Approval:
+    - Strategies Overview: tools/strategies.md
+    - Built-in Strategies: tools/builtin.md
+    - Custom Strategies: tools/custom.md
+    - Security Considerations: tools/security.md
+  - CLI Usage:
+    - Commands Overview: cli/overview.md
+    - Interactive Mode: cli/interactive.md
+    - Batch Operations: cli/batch.md
+    - Configuration: cli/configuration.md
+  - Testing & Development:
+    - Running Tests: testing/running.md
+    - Test Structure: testing/structure.md
+    - Development Setup: testing/development.md
+    - Contributing: testing/contributing.md
+  - Architecture:
+    - System Overview: architecture/overview.md
+    - Core Components: architecture/components.md
+    - Message Flow: architecture/flow.md
+    - Integration Points: architecture/integration.md
+  - Advanced Features:
+    - Response Caching: advanced/caching.md
+    - Configuration Options: advanced/configuration.md
+    - Performance Tuning: advanced/performance.md
+    - Troubleshooting: advanced/troubleshooting.md
+  - Examples:
+    - Basic Usage: examples/basic.md
+    - Advanced Patterns: examples/advanced.md
+    - Integration Examples: examples/integration.md
+
+# Additional configuration
+site_dir: ../docs
+docs_dir: md
+
+# Watch directories for auto-reload during development
+watch:
+  - md/
+  - ../src/claif_cla/
